@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heat Gain Calculation - RoomCalc</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .table-bordered td, .table-bordered th {
+            border: 1px solid #dee2e6;
+        }
+        .bg-lightgray {
+            background-color: #f8f9fa;
+        }
+        .bg-lightred {
+            background-color: #ffcccb;
+        }
+    </style>
+</head>
+<body>
+<div class="container mt-5">
+    <h1 class="text-center">Heat Gain</h1>
+    <form id="heatGainForm" method="POST" class="mt-4">
+        <div class="card mb-4">
+            <div class="card-header bg-lightgray">
+                <h5 class="mb-0">Design conditions</h5>
+            </div>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="col-md-3">
+                        <label>Room</label>
+                    </div>
+                    <div class="col-md-3">
+                        <label>Ambient</label>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="col-md-3">
+                        <label for="room_temp_summer">Summer</label>
+                        <input type="number" step="0.1" id="room_temp_summer" name="room_temp_summer" class="form-control" value="{{ room_temp_summer }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="ambient_temp_summer">&nbsp;</label>
+                        <input type="number" step="0.1" id="ambient_temp_summer" name="ambient_temp_summer" class="form-control" value="{{ ambient_temp_summer }}">
+                    </div>
+                </div>
+                <div class="form-row mt-2">
+                    <div class="col-md-3">
+                        <label for="room_temp_winter">Winter</label>
+                        <input type="number" step="0.1" id="room_temp_winter" name="room_temp_winter" class="form-control" value="{{ room_temp_winter }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="ambient_temp_winter">&nbsp;</label>
+                        <input type="number" step="0.1" id="ambient_temp_winter" name="ambient_temp_winter" class="form-control" value="{{ ambient_temp_winter }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <table class="table table-bordered">
+            <thead>
+            <tr class="bg-lightgray">
+                <th>location</th>
+                <th>Area (m²)</th>
+                <th>Internal Temperature</th>
+                <th>Internal Temperature</th>
+                <th>U-value</th>
+                <th>Deta T (ΔT)</th>
+                <th>Deta T (ΔT)</th>
+                <th>Heat gain</th>
+                <th>Heat gain</th>
+            </tr>
+            <tr class="bg-lightgray">
+                <th></th>
+                <th></th>
+                <th>summer</th>
+                <th>winter</th>
+                <th>W/m²°C</th>
+                <th>summer</th>
+                <th>winter</th>
+                <th>summer</th>
+                <th>winter</th>
+            </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td>Roof</td>
+                <td><input type="number" step="0.1" name="roof_area" class="form-control" value="{{ roof_area }}" readonly></td>
+                <td><input type="number" step="0.1" name="roof_dt_sum" class="form-control"></td>
+                <td><input type="number" step="0.1" name="roof_dt_win" class="form-control"></td>
+                <td><input type="number" step="0.1" name="roof_u_value" class="form-control" value="{{ roof_u_value}}"></td>
+                <td><input type="number" step="0.1" name="roof_dt_sum_2" class="form-control"></td>
+                <td><input type="number" step="0.1" name="roof_dt_win_2" class="form-control"></td>
+                <td><input type="number" step="0.01" name="roof_heat_gain_sum" class="form-control"></td>
+                <td><input type="number" step="0.01" name="roof_heat_gain_win" class="form-control"></td>
+            </tr>
+            <tr>
+                <td>Floor</td>
+                <td><input type="number" step="0.1" name="floor_area" class="form-control" value="{{ floor_area }}" readonly></td>
+                <td><input type="number" step="0.1" name="floor_dt_sum" class="form-control"></td>
+                <td><input type="number" step="0.1" name="floor_dt_win" class="form-control"></td>
+                <td><input type="number" step="0.1" name="floor_u_value" class="form-control" value="{{floor_u_value }}"></td>
+                <td><input type="number" step="0.1" name="floor_dt_sum_2" class="form-control"></td>
+                <td><input type="number" step="0.1" name="floor_dt_win_2" class="form-control"></td>
+                <td><input type="number" step="0.01" name="floor_heat_gain_sum" class="form-control"></td>
+                <td><input type="number" step="0.01" name="floor_heat_gain_win" class="form-control"></td>
+            </tr>
+            <!-- Add similar rows for Walls 1-4 -->
+            {% for wall in walls %}
+                <tr>
+                    <td>Wall {{ loop.index }}</td>
+                    <td><input type="number" step="0.1" name="wall_{{ loop.index }}_area" class="form-control" value="{{ height * wall.Length }}" readonly></td>
+                    <td><input type="number" step="0.1" name="wall_{{ loop.index }}_dt_sum" class="form-control"></td>
+                    <td><input type="number" step="0.1" name="wall_{{ loop.index }}_dt_win" class="form-control"></td>
+                    <td><input type="number" step="0.1" name="wall_{{ loop.index }}_u_value" class="form-control" value="{{ roof_u_value }}"></td>
+                    <td><input type="number" step="0.1" name="wall_{{ loop.index }}_dt_sum_2" class="form-control"></td>
+                    <td><input type="number" step="0.1" name="wall_{{ loop.index }}_dt_win_2" class="form-control"></td>
+                    <td><input type="number" step="0.01" name="wall_{{ loop.index }}_heat_gain_sum" class="form-control"></td>
+                    <td><input type="number" step="0.01" name="wall_{{ loop.index }}_heat_gain_win" class="form-control"></td>
+                </tr>
+            {% endfor %}
+            </tbody>
+            <tfoot>
+            <tr class="bg-lightred">
+                <td colspan="7">Heat gain through surfaces</td>
+                <td><input type="number" step="0.02" name="total_surface_heat_gain_sum" class="form-control" > <span>kW</span></td>
+                <td><input type="number" step="0.01" name="total_surface_heat_gain_win" class="form-control" > <span>kW</span></td>
+            </tr>
+            </tfoot>
+        </table>
+
+        <div class="form-row mt-4">
+            <div class="col-md-4">
+                <label for="lights_personnel">Lights/Personnel (W/m²)</label>
+                <input type="number" step="0.1" id="lights_personnel" name="lights_personnel" class="form-control">
+            </div>
+            <div class="col-md-4">
+                <label>&nbsp;</label>
+                <input type="number" step="0.01" name="lights_personnel_sum" class="form-control bg-lightred" readonly>
+            </div>
+            <div class="col-md-4">
+                <label>&nbsp;</label>
+                <input type="number" step="0.01" name="lights_personnel_win" class="form-control bg-lightred" readonly>
+            </div>
+        </div>
+
+        <div class="form-row mt-2">
+            <div class="col-md-4">
+                <label for="equipment">Equipment</label>
+                <input type="number" step="0.1" id="equipment" name="equipment" class="form-control">
+            </div>
+            <div class="col-md-4">
+                <label>&nbsp;</label>
+                <input type="number" step="0.01" name="equipment_sum" class="form-control bg-lightred" readonly>
+            </div>
+            <div class="col-md-4">
+                <label>&nbsp;</label>
+                <input type="number" step="0.01" name="equipment_win" class="form-control bg-lightred" readonly>
+            </div>
+        </div>
+
+        <div class="form-row mt-2">
+            <div class="col-md-4">
+                <label for="miscellaneous">Miscellaneous</label>
+                <input type="number" step="0.1" id="miscellaneous" name="miscellaneous" class="form-control">
+            </div>
+            <div class="col-md-4">
+                <label>&nbsp;</label>
+                <input type="number" step="0.01" name="miscellaneous_sum" class="form-control bg-lightred" readonly>
+            </div>
+            <div class="col-md-4">
+                <label>&nbsp;</label>
+                <input type="number" step="0.01" name="miscellaneous_win" class="form-control bg-lightred" readonly>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary mt-4">Calculate</button>
+
+        <div class="form-row mt-4">
+            <div class="col-md-4">
+                <label>Total heat gain</label>
+            </div>
+            <div class="col-md-4">
+                <input type="number" step="0.01" name="total_heat_gain_summer" class="form-control bg-lightred" readonly>
+            </div>
+            <div class="col-md-4">
+                <input type="number" step="0.01" name="total_heat_gain_winter" class="form-control bg-lightred" readonly>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#heatGainForm').on('input', function() {
+            calculateHeatGain();
+        });
+
+        function calculateHeatGain() {
+            // Implement the heat gain calculation logic here
+            // Update the readonly fields with calculated values
+        }
+
+        // Initial calculation
+        calculateHeatGain();
+    });
+</script>
+</body>
+</html>

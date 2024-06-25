@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ 'Edit' if room else 'Create' }} Room - RoomCalc</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .form-section {
+            margin-bottom: 20px;
+        }
+        .form-section h4 {
+            margin-bottom: 10px;
+        }
+        .form-group {
+            margin-bottom: 10px;
+        }
+        .form-group label {
+            font-weight: bold;
+        }
+        .input-group-text {
+            width: 100%;
+        }
+    </style>
+    <script>
+        let csrfToken = "{{ form.csrf_token._value() }}"; // Pass CSRF token to JavaScript
+
+        function calculateValues() {
+            const height = parseFloat(document.getElementById('Height').value);
+            const minAirChangeRate = parseFloat(document.getElementById('MinAirChangeRate').value);
+
+            // Calculate floor area based on the first two wall lengths
+            const wallLengths = document.querySelectorAll('input[id^="walls-"][id$="-Length"]');
+            let length1 = 0, length2 = 0;
+
+            if (wallLengths.length > 0) {
+                length1 = parseFloat(wallLengths[0].value);
+            }
+            if (wallLengths.length > 1) {
+                length2 = parseFloat(wallLengths[1].value);
+            }
+
+            const floorArea = length1 * length2; // Assuming rectangular room based on first two lengths
+            const volume = floorArea * height;
+            const minAirflow = volume * minAirChangeRate;
+
+            document.getElementById('Area').value = isNaN(floorArea) ? '' : floorArea.toFixed(2);
+            document.getElementById('Volume').value = isNaN(volume) ? '' : volume.toFixed(2);
+            document.getElementById('RequiredAirflow').value = isNaN(minAirflow) ? '' : minAirflow.toFixed(2);
+        }
+        window.onload = calculateValues;
+
+        function addWall() {
+            const wallsDiv = document.getElementById('walls');
+            const wallIndex = wallsDiv.querySelectorAll('input[name^="walls-"][name$="-Length"]').length; // Updated division by 3 to account for CSRF token input
+
+            const newWallDiv = document.createElement('div');
+            newWallDiv.className = 'form-row';
+
+            const lengthDiv = document.createElement('div');
+            lengthDiv.className = 'form-group col-md-6';
+            const lengthLabel = document.createElement('label');
+            lengthLabel.className = 'form-control-label';
+            lengthLabel.innerText = 'Length (m)';
+            const lengthInput = document.createElement('input');
+            lengthInput.type = 'text';
+            lengthInput.name = `walls-${wallIndex}-Length`;
+            lengthInput.id = `walls-${wallIndex}-Length`;
+            lengthInput.className = 'form-control';
+            lengthDiv.appendChild(lengthLabel);
+            lengthDiv.appendChild(lengthInput);
+
+            const angleDiv = document.createElement('div');
+            angleDiv.className = 'form-group col-md-6';
+            const angleLabel = document.createElement('label');
+            angleLabel.className = 'form-control-label';
+            angleLabel.innerText = 'Angle (°)';
+            const angleInput = document.createElement('input');
+            angleInput.type = 'text';
+            angleInput.name = `walls-${wallIndex}-Angle`;
+            angleInput.id = `walls-${wallIndex}-Angle`;
+            angleInput.className = 'form-control';
+            angleInput.required = true; // Add the required attribute to the Angle input
+            angleDiv.appendChild(angleLabel);
+            angleDiv.appendChild(angleInput);
+
+            const removeDiv = document.createElement('div');
+            removeDiv.className = 'form-group col-md-2';
+            const removeButton = document.createElement('button');
+            removeButton.type = 'button';
+            removeButton.className = 'btn btn-danger mt-4';
+            removeButton.innerText = 'Remove';
+            removeButton.onclick = function() { removeWall(this); };
+            removeDiv.appendChild(removeButton);
+
+            // Add CSRF token
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = `walls-${wallIndex}-csrf_token`;
+            csrfInput.value = csrfToken;
+
+            newWallDiv.appendChild(lengthDiv);
+            newWallDiv.appendChild(angleDiv);
+            newWallDiv.appendChild(csrfInput); // Add the CSRF input to the wallsDiv
+
+            wallsDiv.appendChild(newWallDiv);
+        }
+        function removeWall(button) {
+            const wallEntry = button.closest('.wall-entry');
+            wallEntry.remove();
+            recalculateWallIndices();
+        }
+
+        function recalculateWallIndices() {
+            const wallEntries = document.querySelectorAll('.wall-entry');
+            wallEntries.forEach((entry, index) => {
+                entry.querySelectorAll('input').forEach(input => {
+                    const nameParts = input.name.split('-');
+                    nameParts[1] = index;
+                    input.name = nameParts.join('-');
+                    if (input.id) {
+                        const idParts = input.id.split('-');
+                        idParts[1] = index;
+                        input.id = idParts.join('-');
+                    }
+                });
+            });
+        }
+    </script>
+    </script>
+</head>
+<body>
+<div class="container mt-5">
+    <h1 class="text-center">{{ 'Edit' if room else 'Create' }} Room</h1>
+    <form method="POST" class="mt-4">
+        {{ form.hidden_tag() }}
+
+        <!-- Room Data Section -->
+        <div class="form-section">
+            <h4>Room Data</h4>
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    {{ form.LocationNo.label(class="form-control-label") }}
+                    {{ form.LocationNo(class="form-control") }}
+                </div>
+                <div class="form-group col-md-4">
+                    {{ form.RoomName.label(class="form-control-label") }}
+                    {{ form.RoomName(class="form-control") }}
+                </div>
+                <div class="form-group col-md-4">
+                    {{ form.Elevation.label(class="form-control-label") }}
+                    {{ form.Elevation(class="form-control") }}
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    {{ form.Height.label(class="form-control-label") }}
+                    {{ form.Height(class="form-control", id="Height") }}
+                </div>
+                <div class="form-group col-md-4">
+                    {{ form.MinVentilationPerPerson.label(class="form-control-label") }}
+                    {{ form.MinVentilationPerPerson(class="form-control") }}
+                </div>
+                <div class="form-group col-md-4">
+                    {{ form.MinVentilationPerArea.label(class="form-control-label") }}
+                    {{ form.MinVentilationPerArea(class="form-control", required=True) }}
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    {{ form.MinAirChangeRate.label(class="form-control-label") }}
+                    {{ form.MinAirChangeRate(class="form-control", id="MinAirChangeRate") }}
+                </div>
+                <div class="form-group col-md-4">
+                    {{ form.Volume.label(class="form-control-label") }}
+                    {{ form.Volume(class="form-control", id="Volume", readonly=True) }}
+                </div>
+                <div class="form-group col-md-4">
+                    {{ form.Area.label(class="form-control-label") }}
+                    {{ form.Area(class="form-control", id="Area", readonly=True) }}
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-4">
+                    {{ form.Occupancy.label(class="form-control-label") }}
+                    {{ form.Occupancy(class="form-control", required=True) }}
+                </div>
+                <div class="form-group col-md-4">
+                    {{ form.RequiredAirflow.label(class="form-control-label") }}
+                    {{ form.RequiredAirflow(class="form-control", id="RequiredAirflow", readonly=True) }}
+                </div>
+                <div class="form-group col-md-4">
+                    {{ form.Remarks.label(class="form-control-label") }}
+                    {{ form.Remarks(class="form-control") }}
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-12 text-center">
+                    <button type="button" class="btn btn-info" onclick="calculateValues()">Calculate</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Wall Data Section -->
+        <div class="form-section">
+            <h4>Wall Data</h4>
+            <h4>Wall Data</h4>
+            <div id="walls">
+                {% for wall_form in form.walls %}
+                    <div class="form-row wall-entry">
+                        <div class="form-group col-md-5">
+                            {{ wall_form.Length.label(class="form-control-label") }}
+                            {{ wall_form.Length(class="form-control") }}
+                            {{ wall_form.csrf_token }}
+                        </div>
+                        <div class="form-group col-md-5">
+                            {{ wall_form.Angle.label(class="form-control-label") }}
+                            {{ wall_form.Angle(class="form-control", required=True) }}
+                        </div>
+                        <div class="form-group col-md-2">
+                            <button type="button" class="btn btn-danger mt-4" onclick="removeWall(this)">Remove</button>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-12 text-center">
+                    <button type="button" class="btn btn-secondary" onclick="addWall()">Add Wall</button>
+                </div>
+            </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary">{{ 'Update' if room else 'Create' }}</button>
+    </form>
+    <div class="text-center mt-4">
+        {% if room %}
+            <a href="{{ url_for('heat_gain', room_id=room.RoomID) }}" class="btn btn-warning">Go to Heat Gain</a>
+        {% endif %}
+    </div>
+</div>
+</body>
+</html>
