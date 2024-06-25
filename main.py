@@ -299,4 +299,4 @@ if __name__ == '__main__':
     engine = create_engine(f"sqlite:///{DATABASE_PATH}")
     Base.metadata.create_all(engine)
 
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=os.environ.get('PORT', 5000))
