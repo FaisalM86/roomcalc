@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supply Systems</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .form-container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 30px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        .form-header {
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        .table-container {
+            margin-top: 40px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container mt-5">
+    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary mb-3">Dashboard</a>
+</div>
+
+<div class="container">
+    <div class="form-container">
+        <h2 class="form-header">Supply Systems</h2>
+        <form method="POST">
+            {{ form.hidden_tag() }}
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    {{ form.SystemNo.label(class="form-label") }}
+                    {{ form.SystemNo(class="form-control") }}
+                </div>
+                <div class="form-group col-md-6">
+                    {{ form.SystemName.label(class="form-label") }}
+                    {{ form.SystemName(class="form-control") }}
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    {{ form.TempSupplyWinter.label(class="form-label") }}
+                    {{ form.TempSupplyWinter(class="form-control") }}
+                </div>
+                <div class="form-group col-md-6">
+                    {{ form.TempSupplySummer.label(class="form-label") }}
+                    {{ form.TempSupplySummer(class="form-control") }}
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group col-md-6">
+                    {{ form.CoolingEnthalpy.label(class="form-label") }}
+                    {{ form.CoolingEnthalpy(class="form-control") }}
+                </div>
+                <div class="form-group col-md-6">
+                    {{ form.FanHeat.label(class="form-label") }}
+                    {{ form.FanHeat(class="form-control", step="0.1", min="0") }}
+                </div>
+            </div>
+            <div class="form-group text-center">
+                {{ form.submit(class="btn btn-primary") }}
+            </div>
+        </form>
+    </div>
+
+    <div class="table-container">
+        <h3>Existing Systems</h3>
+        <table class="table table-bordered table-striped">
+            <thead>
+            <tr>
+                <th>System No</th>
+                <th>System Name</th>
+                <th>Supply Temp Summer (°C)</th>
+                <th>Supply Temp Winter (°C)</th>
+                <th>Delta h (kJ/kg)</th>
+                <th>Fan Heat (°C)</th>
+                <th>Actions</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for system in systems %}
+                <tr>
+                    <td>{{ system.SystemNo }}</td>
+                    <td>{{ system.SystemName }}</td>
+                    <td>{{ system.TempSupplySummer }}</td>
+                    <td>{{ system.TempSupplyWinter }}</td>
+                    <td>{{ system.CoolingEnthalpy }}</td>
+                    <td>{{ system.FanHeat }}</td>
+                    <td>
+                        <form action="{{ url_for('delete_system', system_id=system.SupplySystemID) }}" method="POST" style="display:inline-block;">
+                            {{ form.hidden_tag() }}
+                            <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

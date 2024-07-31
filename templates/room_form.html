@@ -3,240 +3,409 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ 'Edit' if room else 'Create' }} Room - RoomCalc</title>
+    <title>{% if room %}Edit Room{% else %}Create Room{% endif %}</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        .form-section {
-            margin-bottom: 20px;
-        }
-        .form-section h4 {
-            margin-bottom: 10px;
-        }
-        .form-group {
-            margin-bottom: 10px;
-        }
-        .form-group label {
-            font-weight: bold;
-        }
-        .input-group-text {
-            width: 100%;
-        }
+        .error { color: red; }
+        .table-editable { position: relative; }
+        .table-remove { color: #700; cursor: pointer; }
+        .table-remove:hover { color: #f00; }
+        .table-add { color: #070; cursor: pointer; }
+        .table-add:hover { color: #0b0; }
+        #room-canvas { border: 1px solid #ddd; cursor: grab; }
+        #room-canvas:active { cursor: grabbing; }
     </style>
-    <script>
-        let csrfToken = "{{ form.csrf_token._value() }}"; // Pass CSRF token to JavaScript
-
-        function calculateValues() {
-            const height = parseFloat(document.getElementById('Height').value);
-            const minAirChangeRate = parseFloat(document.getElementById('MinAirChangeRate').value);
-
-            // Calculate floor area based on the first two wall lengths
-            const wallLengths = document.querySelectorAll('input[id^="walls-"][id$="-Length"]');
-            let length1 = 0, length2 = 0;
-
-            if (wallLengths.length > 0) {
-                length1 = parseFloat(wallLengths[0].value);
-            }
-            if (wallLengths.length > 1) {
-                length2 = parseFloat(wallLengths[1].value);
-            }
-
-            const floorArea = length1 * length2; // Assuming rectangular room based on first two lengths
-            const volume = floorArea * height;
-            const minAirflow = volume * minAirChangeRate;
-
-            document.getElementById('Area').value = isNaN(floorArea) ? '' : floorArea.toFixed(2);
-            document.getElementById('Volume').value = isNaN(volume) ? '' : volume.toFixed(2);
-            document.getElementById('RequiredAirflow').value = isNaN(minAirflow) ? '' : minAirflow.toFixed(2);
-        }
-        window.onload = calculateValues;
-
-        function addWall() {
-            const wallsDiv = document.getElementById('walls');
-            const wallIndex = wallsDiv.querySelectorAll('input[name^="walls-"][name$="-Length"]').length; // Updated division by 3 to account for CSRF token input
-
-            const newWallDiv = document.createElement('div');
-            newWallDiv.className = 'form-row';
-
-            const lengthDiv = document.createElement('div');
-            lengthDiv.className = 'form-group col-md-6';
-            const lengthLabel = document.createElement('label');
-            lengthLabel.className = 'form-control-label';
-            lengthLabel.innerText = 'Length (m)';
-            const lengthInput = document.createElement('input');
-            lengthInput.type = 'text';
-            lengthInput.name = `walls-${wallIndex}-Length`;
-            lengthInput.id = `walls-${wallIndex}-Length`;
-            lengthInput.className = 'form-control';
-            lengthDiv.appendChild(lengthLabel);
-            lengthDiv.appendChild(lengthInput);
-
-            const angleDiv = document.createElement('div');
-            angleDiv.className = 'form-group col-md-6';
-            const angleLabel = document.createElement('label');
-            angleLabel.className = 'form-control-label';
-            angleLabel.innerText = 'Angle (°)';
-            const angleInput = document.createElement('input');
-            angleInput.type = 'text';
-            angleInput.name = `walls-${wallIndex}-Angle`;
-            angleInput.id = `walls-${wallIndex}-Angle`;
-            angleInput.className = 'form-control';
-            angleInput.required = true; // Add the required attribute to the Angle input
-            angleDiv.appendChild(angleLabel);
-            angleDiv.appendChild(angleInput);
-
-            const removeDiv = document.createElement('div');
-            removeDiv.className = 'form-group col-md-2';
-            const removeButton = document.createElement('button');
-            removeButton.type = 'button';
-            removeButton.className = 'btn btn-danger mt-4';
-            removeButton.innerText = 'Remove';
-            removeButton.onclick = function() { removeWall(this); };
-            removeDiv.appendChild(removeButton);
-
-            // Add CSRF token
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = `walls-${wallIndex}-csrf_token`;
-            csrfInput.value = csrfToken;
-
-            newWallDiv.appendChild(lengthDiv);
-            newWallDiv.appendChild(angleDiv);
-            newWallDiv.appendChild(csrfInput); // Add the CSRF input to the wallsDiv
-
-            wallsDiv.appendChild(newWallDiv);
-        }
-        function removeWall(button) {
-            const wallEntry = button.closest('.wall-entry');
-            wallEntry.remove();
-            recalculateWallIndices();
-        }
-
-        function recalculateWallIndices() {
-            const wallEntries = document.querySelectorAll('.wall-entry');
-            wallEntries.forEach((entry, index) => {
-                entry.querySelectorAll('input').forEach(input => {
-                    const nameParts = input.name.split('-');
-                    nameParts[1] = index;
-                    input.name = nameParts.join('-');
-                    if (input.id) {
-                        const idParts = input.id.split('-');
-                        idParts[1] = index;
-                        input.id = idParts.join('-');
-                    }
-                });
-            });
-        }
-    </script>
-    </script>
 </head>
 <body>
+{% if room %}
+    <a href="{{ url_for('heat_gain', room_id=room.RoomID) }}" class="btn btn-secondary mt-3 ml-2">Calculate Heat Gain</a>
+{% endif %}
+<a href="{{ url_for('dashboard') }}" class="btn btn-secondary mt-3 ml-2">Dashboard</a>
 <div class="container mt-5">
-    <h1 class="text-center">{{ 'Edit' if room else 'Create' }} Room</h1>
-    <form method="POST" class="mt-4">
+    <h1 class="mb-4">{% if room %}Edit Room{% else %}Create Room{% endif %}</h1>
+    <form method="POST" id="roomForm">
         {{ form.hidden_tag() }}
 
-        <!-- Room Data Section -->
-        <div class="form-section">
-            <h4>Room Data</h4>
-            <div class="form-row">
-                <div class="form-group col-md-4">
-                    {{ form.LocationNo.label(class="form-control-label") }}
-                    {{ form.LocationNo(class="form-control") }}
-                </div>
-                <div class="form-group col-md-4">
-                    {{ form.RoomName.label(class="form-control-label") }}
-                    {{ form.RoomName(class="form-control") }}
-                </div>
-                <div class="form-group col-md-4">
-                    {{ form.Elevation.label(class="form-control-label") }}
-                    {{ form.Elevation(class="form-control") }}
-                </div>
+        <div class="form-row">
+            <div class="form-group col-md-6">
+                {{ form.LocationNo.label }}
+                {{ form.LocationNo(class="form-control") }}
             </div>
-            <div class="form-row">
-                <div class="form-group col-md-4">
-                    {{ form.Height.label(class="form-control-label") }}
-                    {{ form.Height(class="form-control", id="Height") }}
-                </div>
-                <div class="form-group col-md-4">
-                    {{ form.MinVentilationPerPerson.label(class="form-control-label") }}
-                    {{ form.MinVentilationPerPerson(class="form-control") }}
-                </div>
-                <div class="form-group col-md-4">
-                    {{ form.MinVentilationPerArea.label(class="form-control-label") }}
-                    {{ form.MinVentilationPerArea(class="form-control", required=True) }}
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group col-md-4">
-                    {{ form.MinAirChangeRate.label(class="form-control-label") }}
-                    {{ form.MinAirChangeRate(class="form-control", id="MinAirChangeRate") }}
-                </div>
-                <div class="form-group col-md-4">
-                    {{ form.Volume.label(class="form-control-label") }}
-                    {{ form.Volume(class="form-control", id="Volume", readonly=True) }}
-                </div>
-                <div class="form-group col-md-4">
-                    {{ form.Area.label(class="form-control-label") }}
-                    {{ form.Area(class="form-control", id="Area", readonly=True) }}
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group col-md-4">
-                    {{ form.Occupancy.label(class="form-control-label") }}
-                    {{ form.Occupancy(class="form-control", required=True) }}
-                </div>
-                <div class="form-group col-md-4">
-                    {{ form.RequiredAirflow.label(class="form-control-label") }}
-                    {{ form.RequiredAirflow(class="form-control", id="RequiredAirflow", readonly=True) }}
-                </div>
-                <div class="form-group col-md-4">
-                    {{ form.Remarks.label(class="form-control-label") }}
-                    {{ form.Remarks(class="form-control") }}
-                </div>
-            </div>
-            <div class="form-row">
-                <div class="form-group col-md-12 text-center">
-                    <button type="button" class="btn btn-info" onclick="calculateValues()">Calculate</button>
-                </div>
+
+            <div class="form-group col-md-6">
+                {{ form.RoomName.label }}
+                {{ form.RoomName(class="form-control") }}
             </div>
         </div>
 
-        <!-- Wall Data Section -->
-        <div class="form-section">
-            <h4>Wall Data</h4>
-            <h4>Wall Data</h4>
-            <div id="walls">
+        <div class="form-row">
+            <div class="form-group col-md-6">
+                {{ form.Elevation.label }}
+                {{ form.Elevation(class="form-control") }}
+            </div>
+
+            <div class="form-group col-md-6">
+                {{ form.Height.label }}
+                {{ form.Height(class="form-control", id="Height") }}
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group col-md-6">
+                {{ form.MinVentilationPerPerson.label }}
+                {{ form.MinVentilationPerPerson(class="form-control") }}
+            </div>
+
+            <div class="form-group col-md-6">
+                {{ form.MinVentilationPerArea.label }}
+                {{ form.MinVentilationPerArea(class="form-control") }}
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group col-md-6">
+                {{ form.MinAirChangeRate.label }}
+                {{ form.MinAirChangeRate(class="form-control") }}
+            </div>
+
+            <div class="form-group col-md-6">
+                {{ form.Occupancy.label }}
+                {{ form.Occupancy(class="form-control") }}
+            </div>
+        </div>
+
+        <h3>Walls</h3>
+        <div class="table-editable mb-4">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Length (m)</th>
+                    <th>Angle (°)</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
                 {% for wall_form in form.walls %}
-                    <div class="form-row wall-entry">
-                        <div class="form-group col-md-5">
-                            {{ wall_form.Length.label(class="form-control-label") }}
-                            {{ wall_form.Length(class="form-control") }}
-                            {{ wall_form.csrf_token }}
-                        </div>
-                        <div class="form-group col-md-5">
-                            {{ wall_form.Angle.label(class="form-control-label") }}
-                            {{ wall_form.Angle(class="form-control", required=True) }}
-                        </div>
-                        <div class="form-group col-md-2">
-                            <button type="button" class="btn btn-danger mt-4" onclick="removeWall(this)">Remove</button>
-                        </div>
-                    </div>
+                    <tr class="wall-entry">
+                        <td>{{ wall_form.Length(class="form-control wall-length") }}</td>
+                        <td>{{ wall_form.Angle(class="form-control wall-angle") }}</td>
+                        <td>{% if loop.index > 1 %}<span class="table-remove btn btn-danger">Remove</span>{% endif %}</td>
+                    </tr>
                 {% endfor %}
+                </tbody>
+            </table>
+            <span class="table-add btn btn-secondary mb-3">Add Wall</span>
+        </div>
+
+        <button type="button" id="drawButton" class="btn btn-primary mb-3">Draw Room</button>
+
+        <div class="form-group">
+            <canvas id="room-canvas" width="600" height="400"></canvas>
+        </div>
+
+        <div id="error-message" class="error"></div>
+
+        <div class="form-row">
+            <div class="form-group col-md-4">
+                {{ form.Area.label }}
+                {{ form.Area(class="form-control", readonly=True, id="Area") }}
             </div>
-            <div class="form-row">
-                <div class="form-group col-md-12 text-center">
-                    <button type="button" class="btn btn-secondary" onclick="addWall()">Add Wall</button>
-                </div>
+
+            <div class="form-group col-md-4">
+                {{ form.Volume.label }}
+                {{ form.Volume(class="form-control", readonly=True, id="Volume") }}
+            </div>
+
+            <div class="form-group col-md-4">
+                {{ form.MinimumAirFlow.label }}
+                {{ form.MinimumAirFlow(class="form-control", readonly=True, id="MinimumAirFlow") }}
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary">{{ 'Update' if room else 'Create' }}</button>
+        <button type="button" id="calculateButton" class="btn btn-secondary mt-3">Calculate</button>
+        {{ form.submit(class="btn btn-primary mt-3", id="saveButton") }}
     </form>
-    <div class="text-center mt-4">
-        {% if room %}
-            <a href="{{ url_for('heat_gain', room_id=room.RoomID) }}" class="btn btn-warning">Go to Heat Gain</a>
-        {% endif %}
-    </div>
 </div>
+
+<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+<script>
+    $(document).ready(function() {
+        let wallCount = {{ form.walls|length }};
+        const canvas = document.getElementById('room-canvas');
+        const ctx = canvas.getContext('2d');
+        const errorMessage = document.getElementById('error-message');
+        let isDragging = false;
+        let dragStart = { x: 0, y: 0 };
+        let offset = { x: 0, y: 0 };
+
+        $('.table-add').click(function() {
+            let newWall = `
+                <tr class="wall-entry">
+                    <td><input class="form-control wall-length" name="walls-${wallCount}-Length" id="walls-${wallCount}-Length" type="number" step="0.01"></td>
+                    <td><input class="form-control wall-angle" name="walls-${wallCount}-Angle" id="walls-${wallCount}-Angle" type="number" step="0.01" value="0"></td>
+                    <td><span class="table-remove btn btn-danger">Remove</span></td>
+                </tr>`;
+            $('table tbody').append(newWall);
+            wallCount++;
+        });
+
+        $(document).on('click', '.table-remove', function() {
+            $(this).closest('tr').remove();
+        });
+
+        $('#drawButton').click(function() {
+            drawRoom();
+        });
+
+        $('#calculateButton').click(function() {
+            calculateValues();
+        });
+
+        $('#saveButton').click(function(e) {
+            e.preventDefault();
+            saveRoom();
+        });
+
+        canvas.addEventListener('mousedown', function(event) {
+            isDragging = true;
+            dragStart.x = event.clientX - offset.x;
+            dragStart.y = event.clientY - offset.y;
+            canvas.style.cursor = 'grabbing';
+        });
+
+        canvas.addEventListener('mousemove', function(event) {
+            if (isDragging) {
+                offset.x = event.clientX - dragStart.x;
+                offset.y = event.clientY - dragStart.y;
+                drawRoom();
+            }
+        });
+
+        canvas.addEventListener('mouseup', function() {
+            isDragging = false;
+            canvas.style.cursor = 'grab';
+        });
+
+        canvas.addEventListener('mouseleave', function() {
+            isDragging = false;
+            canvas.style.cursor = 'grab';
+        });
+
+        function drawRoom() {
+            console.log("drawRoom function called");
+            let wallLengths = [];
+            let wallAngles = [];
+
+            $('.wall-entry').each(function() {
+                const length = parseFloat($(this).find('.wall-length').val()) || 0;
+                const angle = parseFloat($(this).find('.wall-angle').val()) || 0;
+                wallLengths.push(length);
+                wallAngles.push(angle);
+            });
+
+            console.log("Wall lengths:", wallLengths);
+            console.log("Wall angles:", wallAngles);
+
+            if (!validateInput(wallLengths, wallAngles)) {
+                errorMessage.textContent = 'Invalid input. Please ensure lengths and angles are valid numbers.';
+                return;
+            }
+
+            const points = calculateRoomPoints(wallLengths, wallAngles);
+
+            if (!isClosedRoom(points)) {
+                errorMessage.textContent = 'The room may not be perfectly closed. Please verify the measurements.';
+            } else {
+                errorMessage.textContent = '';
+            }
+
+            drawRoomOnCanvas(points);
+        }
+
+        function calculateValues() {
+            console.log("calculateValues function called");
+            let wallLengths = [];
+            let wallAngles = [];
+
+            $('.wall-entry').each(function() {
+                const length = parseFloat($(this).find('.wall-length').val()) || 0;
+                const angle = parseFloat($(this).find('.wall-angle').val()) || 0;
+                wallLengths.push(length);
+                wallAngles.push(angle);
+            });
+
+            console.log("Wall lengths:", wallLengths);
+            console.log("Wall angles:", wallAngles);
+
+            if (!validateInput(wallLengths, wallAngles)) {
+                errorMessage.textContent = 'Invalid input. Please ensure lengths and angles are valid numbers.';
+                return;
+            }
+
+            const points = calculateRoomPoints(wallLengths, wallAngles);
+            calculateAndUpdateValues(points);
+        }
+
+        function validateInput(lengths, angles) {
+            if (lengths.length !== angles.length || lengths.length < 3) {
+                console.log("Invalid number of walls");
+                return false;
+            }
+            for (let i = 0; i < lengths.length; i++) {
+                if (isNaN(lengths[i]) || isNaN(angles[i]) || lengths[i] <= 0) {
+                    console.log("Invalid length or angle at index", i);
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function calculateRoomPoints(lengths, angles) {
+            const points = [{ x: 0, y: 0 }];
+
+            for (let i = 0; i < lengths.length; i++) {
+                const radians = angles[i] * (Math.PI / 180);
+                const x = points[i].x + lengths[i] * Math.cos(radians);
+                const y = points[i].y + lengths[i] * Math.sin(radians);
+                points.push({ x, y });
+            }
+
+            console.log("Calculated points:", points);
+            return points;
+        }
+
+        function isClosedRoom(points) {
+            const tolerance = 1; // Increased tolerance
+            const dx = points[0].x - points[points.length - 1].x;
+            const dy = points[0].y - points[points.length - 1].y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            console.log("Closure distance:", distance);
+            return distance < tolerance;
+        }
+
+        function drawRoomOnCanvas(points) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Find bounding box
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            for (let point of points) {
+                minX = Math.min(minX, point.x);
+                minY = Math.min(minY, point.y);
+                maxX = Math.max(maxX, point.x);
+                maxY = Math.max(maxY, point.y);
+            }
+
+            // Calculate scale and offset
+            const width = maxX - minX;
+            const height = maxY - minY;
+            const scale = Math.min(canvas.width / width, canvas.height / height) * 0.8;
+            const offsetX = (canvas.width - width * scale) / 2 - minX * scale + offset.x;
+            const offsetY = (canvas.height - height * scale) / 2 - minY * scale + offset.y;
+
+            // Draw floor
+            ctx.beginPath();
+            ctx.moveTo(points[0].x * scale + offsetX, canvas.height - (points[0].y * scale + offsetY));
+            for (let i = 1; i < points.length; i++) {
+                ctx.lineTo(points[i].x * scale + offsetX, canvas.height - (points[i].y * scale + offsetY));
+            }
+            ctx.closePath();
+            ctx.stroke();
+
+            // Draw wall measurements
+            drawWallMeasurements(points, scale, offsetX, offsetY);
+        }
+
+        function drawWallMeasurements(points, scale, offsetX, offsetY) {
+            ctx.fillStyle = 'blue';
+            ctx.font = '12px Arial';
+            for (let i = 0; i < points.length - 1; i++) {
+                const xMid = (points[i].x + points[i + 1].x) / 2;
+                const yMid = (points[i].y + points[i + 1].y) / 2;
+                const length = Math.sqrt(
+                    Math.pow(points[i + 1].x - points[i].x, 2) +
+                    Math.pow(points[i + 1].y - points[i].y, 2)
+                );
+                ctx.fillText(`Wall ${i + 1}: ${length.toFixed(2)}m`, xMid * scale + offsetX, canvas.height - (yMid * scale + offsetY));
+            }
+        }
+
+        function calculateAndUpdateValues(points) {
+            const height = parseFloat($('#Height').val()) || 0;
+            const area = calculateRoomArea(points);
+            const volume = area * height;
+            const minAirChangeRate = parseFloat($('#MinAirChangeRate').val()) || 0;
+            const minVentilationPerPerson = parseFloat($('#MinVentilationPerPerson').val()) || 0;
+            const minVentilationPerArea = parseFloat($('#MinVentilationPerArea').val()) || 0;
+            const occupancy = parseFloat($('#Occupancy').val()) || 0;
+
+            const requiredAirflow = calculateRequiredAirflow(volume, minAirChangeRate);
+            const minimumAirFlow = calculateMinimumAirFlow(occupancy, minVentilationPerPerson, area, minVentilationPerArea, volume, minAirChangeRate);
+
+            $('#Area').val(area.toFixed(1));
+            $('#Volume').val(volume.toFixed(1));
+            $('#RequiredAirflow').val(requiredAirflow.toFixed(1));
+            $('#MinimumAirFlow').val(minimumAirFlow.toFixed(1));
+        }
+
+        function calculateRoomArea(points) {
+            let area = 0;
+            for (let i = 0; i < points.length; i++) {
+                let j = (i + 1) % points.length;
+                area += points[i].x * points[j].y;
+                area -= points[j].x * points[i].y;
+            }
+            return Math.abs(area / 2);
+        }
+
+        function calculateRequiredAirflow(volume, minAirChangeRate) {
+            return volume * minAirChangeRate;
+        }
+
+        function calculateMinimumAirFlow(occupancy, minVentilationPerPerson, area, minVentilationPerArea, volume, minAirChangeRate) {
+            return Math.max(
+                (occupancy * minVentilationPerPerson * 3.6) + (area * minVentilationPerArea * 3.6),
+                volume * minAirChangeRate
+
+            );
+            console.log("Minimum Air Flow:", minimumAirFlow);
+
+        }
+
+        function saveRoom() {
+            console.log("saveRoom function called");
+            const roomForm = document.getElementById('roomForm');
+            const errorMessage = document.getElementById('error-message');
+
+            // Assuming drawRoom function exists and performs necessary calculations
+            drawRoom();
+
+            if (errorMessage.textContent) {
+                // If there's an error message, don't proceed
+                return;
+            }
+
+            // If no errors, submit the form data via AJAX
+            fetch(roomForm.action, {
+                method: 'POST',
+                body: new FormData(roomForm),
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // If save was successful, redirect to heat gain page
+                        window.location.href = "{{ url_for('heat_gain', room_id=room.RoomID) if room else url_for('heat_gain', room_id=data.room_id) }}";
+                    } else {
+                        // If there was an error, display it
+                        errorMessage.textContent = data.error || 'An error occurred while saving the room.';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    errorMessage.textContent = 'An unexpected error occurred.';
+                });
+        }
+    });
+</script>
+
 </body>
 </html>

@@ -11,10 +11,27 @@
             flex-wrap: wrap;
             gap: 10px;
             margin-bottom: 20px;
+            justify-content: center;
         }
         .button-group .btn {
-            flex: 1;
-            min-width: 150px;
+            flex: 1 1 200px;
+        }
+        .card-header {
+            background-color: #007bff;
+            color: white;
+        }
+        .form-container {
+            max-width: 800px;
+            margin: 40px auto;
+        }
+        .card {
+            margin-top: 20px;
+        }
+        .card-title {
+            margin-bottom: 0.75rem;
+        }
+        .room-list .list-group-item {
+            margin-bottom: 10px;
         }
     </style>
 </head>
@@ -23,8 +40,8 @@
     <h1 class="text-center">Dashboard</h1>
     <div class="button-group">
         <a href="{{ url_for('new_project') }}" class="btn btn-outline-primary">Create new project</a>
-        <button class="btn btn-outline-primary">Supply system table</button>
-        <button class="btn btn-outline-primary">Open Room window</button>
+        <a href="{{ url_for('supply_systems') }}" class="btn btn-outline-primary">Supply system table</a>
+
         <button class="btn btn-outline-primary">Summary report</button>
         <button class="btn btn-outline-primary">Heat load report</button>
         <button class="btn btn-outline-primary">Detailed report</button>
@@ -32,8 +49,8 @@
         <button class="btn btn-outline-primary">Copy Project</button>
         <button class="btn btn-outline-primary">Exit Program</button>
     </div>
-    <div class="mt-4">
-        <h2>Saved Projects</h2>
+    <div class="mt-4 form-container">
+        <h2 class="text-center">Saved Projects</h2>
         <div class="form-group">
             <select id="projectSelect" class="form-control">
                 <option value="">Select a project</option>
@@ -44,8 +61,10 @@
         </div>
         <div id="projectDetails" style="display: none;">
             <div class="card">
-                <div class="card-body">
+                <div class="card-header">
                     <h4 class="card-title"><strong id="projectName"></strong></h4>
+                </div>
+                <div class="card-body">
                     <p class="card-text" id="projectInfo"></p>
                     <div class="float-right mb-2">
                         <a id="editProjectBtn" href="#" class="btn btn-warning btn-sm">Edit</a>
@@ -55,9 +74,9 @@
                         </form>
                         <a href="#" id="projectReportBtn" class="btn btn-info btn-sm">Report</a>
                     </div>
-                    <div>
+                    <div class="mt-4">
                         <a href="#" id="addRoomBtn" class="btn btn-secondary btn-sm mb-2">Add Room</a>
-                        <ul class="list-group" id="roomsList"></ul>
+                        <ul class="list-group room-list" id="roomsList"></ul>
                     </div>
                 </div>
             </div>
@@ -80,18 +99,18 @@
                 if (project) {
                     $('#projectName').text(project.ProjectName);
                     $('#projectInfo').html(`
-                    Client: ${project.Client}<br>
-                    Contract: ${project.Contract}<br>
-                    Sub Contractor: ${project.SubContractor}<br>
-                    Document Number: ${project.DocumentNumber}<br>
-                    Revision: ${project.Revision}<br>
-                    Revision Date: ${project.RevisionDate}<br>
-                    Ambient Temp Summer: ${project.AmbientTempSummer}<br>
-                    Ambient Temp Winter: ${project.AmbientTempWinter}<br>
-                    Default U-Value: ${project.DefaultUValue}<br>
-                    Density: ${project.Density}<br>
-                    Heat Capacity: ${project.HeatCapacity}
-                `);
+                        <strong>Client:</strong> ${project.Client}<br>
+                        <strong>Contract:</strong> ${project.Contract}<br>
+                        <strong>Sub Contractor:</strong> ${project.SubContractor}<br>
+                        <strong>Document Number:</strong> ${project.DocumentNumber}<br>
+                        <strong>Revision:</strong> ${project.Revision}<br>
+                        <strong>Revision Date:</strong> ${project.RevisionDate}<br>
+                        <strong>Ambient Temp Summer:</strong> ${project.AmbientTempSummer}<br>
+                        <strong>Ambient Temp Winter:</strong> ${project.AmbientTempWinter}<br>
+                        <strong>Default U-Value:</strong> ${project.DefaultUValue}<br>
+                        <strong>Density:</strong> ${project.Density}<br>
+                        <strong>Heat Capacity:</strong> ${project.HeatCapacity}
+                    `);
 
                     $('#editProjectBtn').attr('href', `/project/${project.ProjectID}/edit`);
                     $('#deleteProjectForm').attr('action', `/project/${project.ProjectID}/delete`);
@@ -101,24 +120,24 @@
                     $('#roomsList').empty();
                     project.rooms.forEach(room => {
                         $('#roomsList').append(`
-                        <li class="list-group-item">
-                            <h5>Room: ${room.RoomName}</h5>
-                            <p>
-                                Min Air Change Rate: ${room.MinAirChangeRate}<br>
-                                Min Ventilation Per Area: ${room.MinVentilationPerArea}<br>
-                                Min Ventilation Per Person: ${room.MinVentilationPerPerson}<br>
-                                Remarks: ${room.Remarks}
-                            </p>
-                            <div class="float-right mb-2">
-                                <a href="/room/${room.RoomID}/edit" class="btn btn-warning btn-sm">Edit</a>
-                                <form action="/room/${room.RoomID}/delete" method="POST" style="display: inline;">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                                </form>
-                                <a href="/room/${room.RoomID}/report" class="btn btn-info btn-sm">Report</a>
-                            </div>
-                        </li>
-                    `);
+                            <li class="list-group-item">
+                                <h5>Room: ${room.RoomName}</h5>
+                                <p>
+                                    <strong>Min Air Change Rate:</strong> ${room.MinAirChangeRate}<br>
+                                    <strong>Min Ventilation Per Area:</strong> ${room.MinVentilationPerArea}<br>
+                                    <strong>Min Ventilation Per Person:</strong> ${room.MinVentilationPerPerson}<br>
+                                    <strong>Remarks:</strong> ${room.Remarks}
+                                </p>
+                                <div class="float-right mb-2">
+                                    <a href="/room/${room.RoomID}/edit" class="btn btn-warning btn-sm">Edit</a>
+                                    <form action="/room/${room.RoomID}/delete" method="POST" style="display: inline;">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                    </form>
+                                    <a href="/room/${room.RoomID}/report" class="btn btn-info btn-sm">Report</a>
+                                </div>
+                            </li>
+                        `);
                     });
 
                     $('#projectDetails').show();

@@ -7,9 +7,7 @@ from wtforms import StringField, FloatField, IntegerField, SubmitField, SelectFi
 from wtforms.fields.form import FormField
 from wtforms.fields.list import FieldList
 from wtforms.fields.simple import HiddenField
-from wtforms.validators import DataRequired, Optional, NumberRange,EqualTo,Length
-
-
+from wtforms.validators import DataRequired, Optional, NumberRange, EqualTo, Length, InputRequired
 
 
 class ProjectForm(FlaskForm):
@@ -30,24 +28,25 @@ class ProjectForm(FlaskForm):
 
 class WallForm(FlaskForm):
     WallID = HiddenField()
-    Length = FloatField('Length (m)', validators=[DataRequired()])
-    Angle = FloatField('Angle (°)', validators=[Optional()])
+    Length = FloatField('Length (m)')
+    Angle = FloatField('Angle (°)')
 
 class RoomForm(FlaskForm):
-    LocationNo = StringField('Location No', validators=[DataRequired()])
-    RoomName = StringField('Room Name', validators=[DataRequired()])
-    Elevation = FloatField('Elevation (meters)', validators=[DataRequired()])
-    Height = FloatField('Height (meters)', validators=[DataRequired()])
-    MinVentilationPerPerson = FloatField('Minimum Ventilation per Person (l/s)', validators=[DataRequired()])
-    MinVentilationPerArea = FloatField('Minimum Ventilation per Area (l/sm²)', validators=[Optional()])
-    MinAirChangeRate = FloatField('Minimum Air Change Rate (ac/h)', validators=[DataRequired()])
-    Volume = FloatField('Volume (m³)', validators=[DataRequired()])
-    Area = FloatField('Floor Area (m²)', validators=[DataRequired()])
-    Occupancy = IntegerField('Number of Persons', validators=[Optional()])
-    RequiredAirflow = FloatField('Minimum Airflow (m³/h)', validators=[DataRequired()])
-    Remarks = TextAreaField('Remarks')
-    walls = FieldList(FormField(WallForm), min_entries=1, max_entries=10)
-    submit = SubmitField('Save')
+    LocationNo = StringField('Location No', validators=[InputRequired()])
+    RoomName = StringField('Room Name', validators=[InputRequired()])
+    Elevation = FloatField('Elevation', validators=[DataRequired()])
+    Height = FloatField('Height (Meters)', validators=[DataRequired()])
+    MinVentilationPerPerson = FloatField('Min Ventilation Per Person (l/s)', validators=[DataRequired()])
+    MinVentilationPerArea = FloatField('Min Ventilation Per Area (l/sm\u00B2)', validators=[DataRequired()])
+    MinAirChangeRate = FloatField('Min Air Change Rate (ac/h)', validators=[DataRequired()])
+    Volume = FloatField('Volume (m\u00B3)', render_kw={'readonly': True})
+    Area = FloatField('Floor Area (m\u00B2)', render_kw={'readonly': True})
+    Occupancy = FloatField('No of People', validators=[InputRequired()])
+    RequiredAirflow = FloatField('Minimum Airflow (m\u00B3/h)', render_kw={'readonly': True})
+    MinimumAirFlow = FloatField('Minimum Airflow (m\u00B3/h)', render_kw={'readonly': True})
+    Remarks = StringField('Remarks')
+    walls = FieldList(FormField(WallForm))
+    submit = SubmitField('Save & Next')
 
 class SurfaceForm(FlaskForm):
     SurfaceType = SelectField('Surface Type', choices=[('Wall', 'Wall'), ('Roof', 'Roof'), ('Floor', 'Floor')], validators=[DataRequired()])
@@ -57,13 +56,13 @@ class SurfaceForm(FlaskForm):
     submit = SubmitField('Submit')
 
 class SupplySystemForm(FlaskForm):
-    SystemNo = StringField('System Number', validators=[DataRequired()])
-    SystemName = StringField('System Name', validators=[DataRequired()])
+    SystemNo = StringField('System Number', validators=[InputRequired()])
+    SystemName = StringField('System Name', validators=[InputRequired()])
     TempSupplyWinter = FloatField('Supply Temperature Winter', validators=[DataRequired()])
-    TempSupplySummer = FloatField('Supply Temperature Summer', validators=[DataRequired()])
-    CoolingEnthalpy = FloatField('Cooling Enthalpy', validators=[DataRequired()])
-    FanHeat = FloatField('Fan Heat', validators=[DataRequired()])
-    submit = SubmitField('Submit')
+    TempSupplySummer = FloatField('Supply Temperature Summer', validators=[InputRequired()])
+    CoolingEnthalpy = FloatField('DeltaH', validators=[InputRequired()])
+    FanHeat = FloatField('Fan Heat', validators=[InputRequired()])
+    submit = SubmitField('Save')
 
 class LightForm(FlaskForm):
     LightDescription = StringField('Light Description', validators=[DataRequired()])
@@ -91,8 +90,8 @@ class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired(), Length(min=2, max=20)])
     password = PasswordField('Password', validators=[DataRequired()])
     confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
-    submit = SubmitField('Register')
-
+    access_level = SelectField('Access Level', choices=[(1, 'User'), (2, 'Admin')], coerce=int, validators=[DataRequired()])
+    submit = SubmitField('Sign Up')
 class LoginForm(FlaskForm):
     username = StringField('Username', validators=[DataRequired()])
     password = PasswordField('Password', validators=[DataRequired()])

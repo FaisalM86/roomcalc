@@ -4,14 +4,17 @@
 from data_access import get_room_data, get_surface_data, get_supply_system_data, get_personnel_data, get_equipment_data, get_light_data, update_room_calculations
 from models import Room, Surface, SupplySystem, Personnel, Equipment, Light
 
-def calculate_heat_gain_from_surfaces(surfaces):
-    """ Calculate total heat gain from all surfaces in a room """
-    total_heat_gain = 0
+def calculate_heat_gain_from_surfaces(surfaces, room_temp_summer, ambient_temp_summer, room_temp_winter, ambient_temp_winter):
+    """ Calculate total heat gain from all surfaces in a room for both summer and winter """
+    total_heat_gain_summer = 0
+    total_heat_gain_winter = 0
     for surface in surfaces:
         # Heat gain from a surface = Area * UValue * (TemperatureOther - RoomTemperature)
-        heat_gain = surface.Area * surface.UValue * (surface.TemperatureOther - 20)  # Assuming room temp of 20C for calculation
-        total_heat_gain += heat_gain
-    return total_heat_gain
+        heat_gain_summer = surface['Area'] * surface['UValue'] * (ambient_temp_summer - room_temp_summer)
+        heat_gain_winter = surface['Area'] * surface['UValue'] * (ambient_temp_winter - room_temp_winter)
+        total_heat_gain_summer += heat_gain_summer
+        total_heat_gain_winter += heat_gain_winter
+    return total_heat_gain_summer, total_heat_gain_winter
 
 def calculate_heat_gain_from_personnel(personnel):
     """ Calculate total heat gain from personnel in a room """

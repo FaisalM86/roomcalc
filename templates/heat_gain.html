@@ -21,6 +21,7 @@
 <div class="container mt-5">
     <h1 class="text-center">Heat Gain</h1>
     <form id="heatGainForm" method="POST" class="mt-4">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div class="card mb-4">
             <div class="card-header bg-lightgray">
                 <h5 class="mb-0">Design conditions</h5>
@@ -36,8 +37,8 @@
                 </div>
                 <div class="form-row">
                     <div class="col-md-3">
-                        <label for="room_temp_summer">Summer</label>
-                        <input type="number" step="0.1" id="room_temp_summer" name="room_temp_summer" class="form-control" value="{{ room_temp_summer }}">
+                        <label for="room_temp_summer">Summer (Max)</label>
+                        <input type="number" step="0.1" id="room_temp_summer" name="room_temp_summer" class="form-control" >
                     </div>
                     <div class="col-md-3">
                         <label for="ambient_temp_summer">&nbsp;</label>
@@ -46,8 +47,8 @@
                 </div>
                 <div class="form-row mt-2">
                     <div class="col-md-3">
-                        <label for="room_temp_winter">Winter</label>
-                        <input type="number" step="0.1" id="room_temp_winter" name="room_temp_winter" class="form-control" value="{{ room_temp_winter }}">
+                        <label for="room_temp_winter">Winter (Min)</label>
+                        <input type="number" step="0.1" id="room_temp_winter" name="room_temp_winter" class="form-control" >
                     </div>
                     <div class="col-md-3">
                         <label for="ambient_temp_winter">&nbsp;</label>
@@ -56,7 +57,6 @@
                 </div>
             </div>
         </div>
-
         <table class="table table-bordered">
             <thead>
             <tr class="bg-lightgray">
@@ -88,24 +88,23 @@
                 <td><input type="number" step="0.1" name="roof_area" class="form-control" value="{{ roof_area }}" readonly></td>
                 <td><input type="number" step="0.1" name="roof_dt_sum" class="form-control"></td>
                 <td><input type="number" step="0.1" name="roof_dt_win" class="form-control"></td>
-                <td><input type="number" step="0.1" name="roof_u_value" class="form-control" value="{{ roof_u_value}}"></td>
-                <td><input type="number" step="0.1" name="roof_dt_sum_2" class="form-control"></td>
-                <td><input type="number" step="0.1" name="roof_dt_win_2" class="form-control"></td>
-                <td><input type="number" step="0.01" name="roof_heat_gain_sum" class="form-control"></td>
-                <td><input type="number" step="0.01" name="roof_heat_gain_win" class="form-control"></td>
+                <td><input type="number" step="0.1" name="roof_u_value" class="form-control" value="{{ roof_u_value }}"></td>
+                <td><input type="number" step="0.1" name="roof_dt_sum_2" class="form-control" readonly></td>
+                <td><input type="number" step="0.1" name="roof_dt_win_2" class="form-control" readonly></td>
+                <td><input type="number" step="0.01" name="roof_heat_gain_sum" class="form-control" readonly></td>
+                <td><input type="number" step="0.01" name="roof_heat_gain_win" class="form-control" readonly></td>
             </tr>
             <tr>
                 <td>Floor</td>
                 <td><input type="number" step="0.1" name="floor_area" class="form-control" value="{{ floor_area }}" readonly></td>
                 <td><input type="number" step="0.1" name="floor_dt_sum" class="form-control"></td>
                 <td><input type="number" step="0.1" name="floor_dt_win" class="form-control"></td>
-                <td><input type="number" step="0.1" name="floor_u_value" class="form-control" value="{{floor_u_value }}"></td>
-                <td><input type="number" step="0.1" name="floor_dt_sum_2" class="form-control"></td>
-                <td><input type="number" step="0.1" name="floor_dt_win_2" class="form-control"></td>
-                <td><input type="number" step="0.01" name="floor_heat_gain_sum" class="form-control"></td>
-                <td><input type="number" step="0.01" name="floor_heat_gain_win" class="form-control"></td>
+                <td><input type="number" step="0.1" name="floor_u_value" class="form-control" value="{{ floor_u_value }}"></td>
+                <td><input type="number" step="0.1" name="floor_dt_sum_2" class="form-control" readonly></td>
+                <td><input type="number" step="0.1" name="floor_dt_win_2" class="form-control" readonly></td>
+                <td><input type="number" step="0.01" name="floor_heat_gain_sum" class="form-control" readonly></td>
+                <td><input type="number" step="0.01" name="floor_heat_gain_win" class="form-control" readonly></td>
             </tr>
-            <!-- Add similar rows for Walls 1-4 -->
             {% for wall in walls %}
                 <tr>
                     <td>Wall {{ loop.index }}</td>
@@ -113,34 +112,37 @@
                     <td><input type="number" step="0.1" name="wall_{{ loop.index }}_dt_sum" class="form-control"></td>
                     <td><input type="number" step="0.1" name="wall_{{ loop.index }}_dt_win" class="form-control"></td>
                     <td><input type="number" step="0.1" name="wall_{{ loop.index }}_u_value" class="form-control" value="{{ roof_u_value }}"></td>
-                    <td><input type="number" step="0.1" name="wall_{{ loop.index }}_dt_sum_2" class="form-control"></td>
-                    <td><input type="number" step="0.1" name="wall_{{ loop.index }}_dt_win_2" class="form-control"></td>
-                    <td><input type="number" step="0.01" name="wall_{{ loop.index }}_heat_gain_sum" class="form-control"></td>
-                    <td><input type="number" step="0.01" name="wall_{{ loop.index }}_heat_gain_win" class="form-control"></td>
+                    <td><input type="number" step="0.1" name="wall_{{ loop.index }}_dt_sum_2" class="form-control" readonly></td>
+                    <td><input type="number" step="0.1" name="wall_{{ loop.index }}_dt_win_2" class="form-control" readonly></td>
+                    <td><input type="number" step="0.01" name="wall_{{ loop.index }}_heat_gain_sum" class="form-control" readonly></td>
+                    <td><input type="number" step="0.01" name="wall_{{ loop.index }}_heat_gain_win" class="form-control" readonly></td>
                 </tr>
             {% endfor %}
             </tbody>
             <tfoot>
-            <tr class="bg-lightred">
-                <td colspan="7">Heat gain through surfaces</td>
-                <td><input type="number" step="0.02" name="total_surface_heat_gain_sum" class="form-control" > <span>kW</span></td>
-                <td><input type="number" step="0.01" name="total_surface_heat_gain_win" class="form-control" > <span>kW</span></td>
-            </tr>
-            </tfoot>
         </table>
-
         <div class="form-row mt-4">
             <div class="col-md-4">
                 <label for="lights_personnel">Lights/Personnel (W/m²)</label>
                 <input type="number" step="0.1" id="lights_personnel" name="lights_personnel" class="form-control">
             </div>
             <div class="col-md-4">
-                <label>&nbsp;</label>
-                <input type="number" step="0.01" name="lights_personnel_sum" class="form-control bg-lightred" readonly>
+                <label for="lights_personnel_sum">Summer</label>
+                <div class="input-group">
+                    <input type="number" step="0.01" name="lights_personnel_sum" class="form-control">
+                    <div class="input-group-append">
+                        <span class="input-group-text">kW</span>
+                    </div>
+                </div>
             </div>
             <div class="col-md-4">
-                <label>&nbsp;</label>
-                <input type="number" step="0.01" name="lights_personnel_win" class="form-control bg-lightred" readonly>
+                <label for="lights_personnel_win">Winter</label>
+                <div class="input-group">
+                    <input type="number" step="0.01" name="lights_personnel_win" class="form-control">
+                    <div class="input-group-append">
+                        <span class="input-group-text">kW</span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -151,11 +153,21 @@
             </div>
             <div class="col-md-4">
                 <label>&nbsp;</label>
-                <input type="number" step="0.01" name="equipment_sum" class="form-control bg-lightred" readonly>
+                <div class="input-group">
+                    <input type="number" step="0.01" name="equipment_sum" class="form-control">
+                    <div class="input-group-append">
+                        <span class="input-group-text">kW</span>
+                    </div>
+                </div>
             </div>
             <div class="col-md-4">
                 <label>&nbsp;</label>
-                <input type="number" step="0.01" name="equipment_win" class="form-control bg-lightred" readonly>
+                <div class="input-group">
+                    <input type="number" step="0.01" name="equipment_win" class="form-control">
+                    <div class="input-group-append">
+                        <span class="input-group-text">kW</span>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -166,45 +178,569 @@
             </div>
             <div class="col-md-4">
                 <label>&nbsp;</label>
-                <input type="number" step="0.01" name="miscellaneous_sum" class="form-control bg-lightred" readonly>
+                <div class="input-group">
+                    <input type="number" step="0.01" name="miscellaneous_sum" class="form-control">
+                    <div class="input-group-append">
+                        <span class="input-group-text">kW</span>
+                    </div>
+                </div>
             </div>
             <div class="col-md-4">
                 <label>&nbsp;</label>
-                <input type="number" step="0.01" name="miscellaneous_win" class="form-control bg-lightred" readonly>
+                <div class="input-group">
+                    <input type="number" step="0.01" name="miscellaneous_win" class="form-control">
+                    <div class="input-group-append">
+                        <span class="input-group-text">kW</span>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary mt-4">Calculate</button>
-
-        <div class="form-row mt-4">
-            <div class="col-md-4">
-                <label>Total heat gain</label>
+        <div class="form-row mt-4 align-items-center">
+            <div class="col-md-4 text-right">
+                <label class="font-weight-bold">Total Heat Gain</label>
             </div>
             <div class="col-md-4">
-                <input type="number" step="0.01" name="total_heat_gain_summer" class="form-control bg-lightred" readonly>
+                <div class="input-group">
+                    <input type="number" step="0.01" name="total_surface_heat_gain_sum" class="form-control bg-lightred" readonly>
+                    <div class="input-group-append">
+                        <span class="input-group-text">kW (Summer)</span>
+                    </div>
+                </div>
             </div>
             <div class="col-md-4">
-                <input type="number" step="0.01" name="total_heat_gain_winter" class="form-control bg-lightred" readonly>
+                <div class="input-group">
+                    <input type="number" step="0.01" name="total_surface_heat_gain_win" class="form-control bg-lightred" readonly>
+                    <div class="input-group-append">
+                        <span class="input-group-text">kW (Winter)</span>
+                    </div>
+                </div>
             </div>
         </div>
     </form>
 </div>
+<!-- Add the new System Data and Results sections here -->
+<div class="container-fluid mt-5">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">System Data</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered">
+                        <thead>
+                        <tr>
+                            <th></th>
+                            <th>Supply System Temperature</th>
+                            <th>Increase / Decrease</th>
+                            <th>Supply before reheat</th>
+                            <th>Untreated</th>
+                            <th>Cool air Temperature</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td>Summer</td>
+                            <td><input type="number" class="form-control" id="summer_supply_temp" step="0.1" readonly> °C </td>
+                            <td><input type="number" class="form-control" id="summer_increase_decrease" step="0.1"> °C</td>
+                            <td><input type="number" class="form-control" id="summer_supply_before_reheat" step="0.1" readonly> °C</td>
+                            <td><input type="number" class="form-control" id="summer_untreated" step="0.1" readonly> °C</td>
+                            <td><input type="number" class="form-control" id="summer_cool_air_temp" step="0.1"> °C</td>
+                        </tr>
+                        <tr>
+                            <td>Winter</td>
+                            <td><input type="number" class="form-control" id="winter_supply_temp" step="0.1" readonly> °C</td>
+                            <td><input type="number" class="form-control" id="winter_increase_decrease" step="0.1"> °C</td>
+                            <td><input type="number" class="form-control" id="winter_supply_before_reheat" step="0.1" readonly> °C</td>
+                            <td><input type="number" class="form-control" id="winter_untreated" step="0.1" readonly> °C</td>
+                            <td><input type="number" class="form-control" id="winter_cool_air_temp" step="0.1"> °C</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    <table class="table table-bordered mt-3">
+                        <thead>
+                        <tr>
+                            <th></th>
+                            <th>ac/h</th>
+                            <th>added %</th>
+                            <th>computed %</th>
+                            <th>m³/h</th>
+                            <td>System</td>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td>Supply (fresh) air</td>
+                            <td><input type="number" class="form-control" id="supply_air_ach" step="0.1"></td>
+                            <td><input type="number" class="form-control" id="supply_air_added" step="1"></td>
+                            <td><input type="number" class="form-control" id="supply_air_computed" step="1" readonly></td>
+                            <td><input type="number" class="form-control" id="required_cooling_capacity" step="1" readonly></td>
+                            <td>
+                                <select class="form-control" id="supply_air_system">
+                                    <option value="">Select System</option>
+                                    {% for system in supply_systems %}
+                                        <option value="{{ system.SystemNo }}">{{ system.SystemNo }}</option>
+                                    {% endfor %}
+                                </select>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td>Recirculated air</td>
+                            <td><input type="number" class="form-control" id="recirculated_air_ach" step="0.1"></td>
+                            <td><input type="number" class="form-control" id="recirculated_air_added" step="1"></td>
+                            <td><input type="number" class="form-control" id="recirculated_air_computed" step="1" readonly></td>
+                            <td><input type="number" class="form-control" id="recirculated_air_m3h" step="1" readonly></td>
+                            <td><input type="text" class="form-control" id="recirculated_air_system"></td>
+                        </tr>
+                        <tr>
+                            <td>Extract air</td>
+                            <td><input type="number" class="form-control" id="extract_air_ach" step="0.1"></td>
+                            <td><input type="number" class="form-control" id="extract_air_added" step="1"></td>
+                            <td><input type="number" class="form-control" id="extract_air_computed" step="1" readonly></td>
+                            <td><input type="number" class="form-control" id="extract_air_m3h" step="1" readonly></td>
+                            <td><input type="text" class="form-control" id="extract_air_system"></td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    <div class="form-group mt-3">
+                        <label for="note">Note</label>
+                        <input type="text" class="form-control" id="note">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0">Results</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-bordered">
+                        <thead>
+                        <tr>
+                            <th></th>
+                            <th>Summer</th>
+                            <th>Winter</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr>
+                            <td>Actual air temperature after reheat</td>
+                            <td><input type="number" class="form-control" id="summer_actual_air_temp" step="0.1" readonly> °C</td>
+                            <td><input type="number" class="form-control" id="winter_actual_air_temp" step="0.1" readonly> °C</td>
+                        </tr>
 
-<script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+                        <tr>
+                            <td>Actual room temperature</td>
+                            <td><input type="number" class="form-control" id="actual_room_temp_summer" step="0.1" readonly> °C</td>
+                            <td><input type="number" class="form-control" id="actual_room_temp_winter" step="0.1" readonly> °C</td>
+                        </tr>
+                        <tr>
+                            <td>Required reheat capacity</td>
+                            <td><input type="number" class="form-control" id="summer_required_reheat" step="0.1" readonly> kW</td>
+                            <td><input type="number" class="form-control" id="winter_required_reheat" step="0.1" readonly> kW</td>
+                        </tr>
+                        <tr>
+                            <td>Required cooling capacity (recirculated)</td>
+                            <td><input type="number" class="form-control" id="summer_required_cooling" step="0.1" readonly> kW</td>
+                            <td><input type="number" class="form-control" id="winter_required_cooling" step="0.1" readonly> kW</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                    <div class="form-group mt-3">
+                        <label for="remarks">Remarks</label>
+                        <textarea class="form-control" id="remarks" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <button id="calculateButton" type="button" class="btn btn-primary">Calculate</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
 <script>
-    $(document).ready(function() {
-        $('#heatGainForm').on('input', function() {
-            calculateHeatGain();
+    // Project data and constants
+    const projectData = {
+        required_airflow: {{ required_airflow|default(1, true) }},
+        density: {{ project.Density }},
+        heatCapacity: {{ project.HeatCapacity }},
+        ambientTempSummer: {{ ambient_temp_summer }},
+        ambientTempWinter: {{ ambient_temp_winter }},
+        roofUValue: {{ roof_u_value }},
+        floorUValue: {{ floor_u_value }},
+    };
+
+    const supplySystemsData = {{ supply_systems_data | tojson | safe }};
+
+    // Utility functions
+    function parseNumber(value) {
+        return Number(value) || 0;
+    }
+
+    // Core calculation functions
+    function calculateRoomTemp(U_values, areas, temps, AF, rho, Cp, IHGs, supplyBeforeReheat) {
+        let a = U_values.reduce((sum, U, i) => sum + U * areas[i], 0) + (AF / 3600) * rho * Cp;
+        let b = U_values.reduce((sum, U, i) => sum + U * areas[i] * temps[i], 0) + (AF / 3600) * rho * Cp * supplyBeforeReheat + IHGs;
+        return b / a;
+    }
+
+    function updateHeatGains(surfaces, actualRoomTempSummer, actualRoomTempWinter, ambientTempSummer, ambientTempWinter, IHGsSummer, IHGsWinter) {
+        let totalHeatGainSummer = 0;
+        let totalHeatGainWinter = 0;
+
+        surfaces.forEach((surface, index) => {
+            surface.deltaTSummer = surface.internalTempSummer - actualRoomTempSummer;
+            surface.deltaTWinter = surface.internalTempWinter - actualRoomTempWinter;
+            let heatGainSummer = surface.area * surface.uValue * surface.deltaTSummer / 1000;
+            let heatGainWinter = surface.area * surface.uValue * surface.deltaTWinter / 1000;
+
+            totalHeatGainSummer += heatGainSummer;
+            totalHeatGainWinter += heatGainWinter;
+
+            let row = $('tbody tr').eq(index);
+            row.find('input[name$="_dt_sum_2"]').val(Math.round(surface.deltaTSummer));
+            row.find('input[name$="_dt_win_2"]').val(Math.round(surface.deltaTWinter));
+            row.find('input[name$="_heat_gain_sum"]').val(heatGainSummer.toFixed(2));
+            row.find('input[name$="_heat_gain_win"]').val(heatGainWinter.toFixed(2));
         });
 
-        function calculateHeatGain() {
-            // Implement the heat gain calculation logic here
-            // Update the readonly fields with calculated values
-        }
+        totalHeatGainSummer += IHGsSummer;
+        totalHeatGainWinter += IHGsWinter;
 
-        // Initial calculation
+        $('input[name="total_surface_heat_gain_sum"]').val(totalHeatGainSummer.toFixed(2));
+        $('input[name="total_surface_heat_gain_win"]').val(totalHeatGainWinter.toFixed(2));
+
+        updateRoomTotalHeatGain();
+    }
+
+    function calculateHeatGain() {
+        let surfaces = collectSurfaceData();
+        let {AF, rho, Cp} = getAirProperties();
+        let {IHGsSummer, IHGsWinter} = getInternalHeatGains();
+        let {ambientTempSummer, ambientTempWinter, supplyBeforeReheatSummer, supplyBeforeReheatWinter} = getTemperatures();
+
+        let {U_values, areas, summerTemps, winterTemps} = processSurfaceData(surfaces);
+
+        let actualRoomTempSummer = calculateRoomTemp(U_values, areas, summerTemps, AF, rho, Cp, IHGsSummer * 1000, supplyBeforeReheatSummer);
+        let actualRoomTempWinter = calculateRoomTemp(U_values, areas, winterTemps, AF, rho, Cp, IHGsWinter * 1000, supplyBeforeReheatWinter);
+
+        updateRoomTemperatures(actualRoomTempSummer, actualRoomTempWinter);
+
+        updateHeatGains(surfaces, actualRoomTempSummer, actualRoomTempWinter, ambientTempSummer, ambientTempWinter, IHGsSummer, IHGsWinter);
+    }
+
+    // Helper functions
+    function collectSurfaceData() {
+        let surfaces = [];
+        surfaces.push(getSurfaceData('roof'));
+        surfaces.push(getSurfaceData('floor'));
+        $('tbody tr').each(function(index) {
+            if ($(this).find('td:first').text().startsWith('Wall')) {
+                surfaces.push(getWallData($(this)));
+            }
+        });
+        return surfaces;
+    }
+
+    function getSurfaceData(type) {
+        return {
+            area: parseNumber($(`input[name="${type}_area"]`).val()),
+            uValue: parseNumber($(`input[name="${type}_u_value"]`).val()),
+            internalTempSummer: parseNumber($(`input[name="${type}_dt_sum"]`).val()) || projectData.ambientTempSummer,
+            internalTempWinter: parseNumber($(`input[name="${type}_dt_win"]`).val()) || projectData.ambientTempWinter
+        };
+    }
+
+    function getWallData(row) {
+        let internalTempSummer = parseNumber(row.find('input[name$="_dt_sum"]').val());
+        let internalTempWinter = parseNumber(row.find('input[name$="_dt_win"]').val());
+        return {
+            area: parseNumber(row.find('input[name$="_area"]').val()),
+            uValue: parseNumber(row.find('input[name$="_u_value"]').val()),
+            internalTempSummer: !isNaN(internalTempSummer) && internalTempSummer !== 0 ? internalTempSummer : projectData.ambientTempSummer,
+            internalTempWinter: !isNaN(internalTempWinter) && internalTempWinter !== 0 ? internalTempWinter : projectData.ambientTempWinter
+        };
+    }
+
+    function getAirProperties() {
+        let AF = Math.ceil(projectData.required_airflow / 100) * 100;
+        return {AF, rho: projectData.density, Cp: projectData.heatCapacity};
+    }
+
+    function getInternalHeatGains() {
+        return {
+            IHGsSummer: ['lights_personnel_sum', 'equipment_sum', 'miscellaneous_sum'].reduce((sum, field) => sum + parseNumber($(`input[name="${field}"]`).val()), 0),
+            IHGsWinter: ['lights_personnel_win', 'equipment_win', 'miscellaneous_win'].reduce((sum, field) => sum + parseNumber($(`input[name="${field}"]`).val()), 0)
+        };
+    }
+
+    function getTemperatures() {
+        return {
+            ambientTempSummer: parseNumber($('#ambient_temp_summer').val()),
+            ambientTempWinter: parseNumber($('#ambient_temp_winter').val()),
+            supplyBeforeReheatSummer: parseNumber($('#summer_supply_before_reheat').val()),
+            supplyBeforeReheatWinter: parseNumber($('#winter_supply_before_reheat').val())
+        };
+    }
+
+    function processSurfaceData(surfaces) {
+        return {
+            U_values: surfaces.map(s => s.uValue),
+            areas: surfaces.map(s => s.area),
+            summerTemps: surfaces.map(s => s.internalTempSummer),
+            winterTemps: surfaces.map(s => s.internalTempWinter)
+        };
+    }
+
+
+
+    function updateRoomTemperatures(summer, winter) {
+        let maxSummerTemp = parseNumber($('#room_temp_summer').val());
+        let minWinterTemp = parseNumber($('#room_temp_winter').val());
+
+        // For summer, we want the actual temp to not exceed the max
+        let actualSummerTemp = Math.min(summer, maxSummerTemp);
+
+        // For winter, we want the actual temp to not be below the min
+        let actualWinterTemp = Math.min(winter, minWinterTemp);
+
+        $('#actual_room_temp_summer').val(actualSummerTemp.toFixed(1));
+        $('#actual_room_temp_winter').val(actualWinterTemp.toFixed(1));
+
+        // These remain unchanged
+        $('#summer_untreated').val(summer.toFixed(1));
+        $('#winter_untreated').val(winter.toFixed(1));
+
+        // Gather values from the HTML form
+        const U_values = [];
+        const areas = [];
+        const temps = [];
+        console.log(U_values);
+        console.log(areas);
+        console.log(temps);
+        let ambientTempSummer = projectData.ambientTempSummer;
+
+        $('tbody tr').each(function() {
+            U_values.push(parseNumber($(this).find('input[name$="_u_value"]').val()));
+            areas.push(parseNumber($(this).find('input[name$="_area"]').val()));
+            temps.push(parseNumber($(this).find('input[name$="_dt_sum"]').val()) || ambientTempSummer);
+        });
+
+        const TR_s = actualSummerTemp;
+        console.log(TR_s);
+        const rho = projectData.density;
+        console.log(rho);
+        const Cp = projectData.heatCapacity;
+        console.log(Cp);
+        const total_IHGs = getInternalHeatGains().IHGsSummer + getInternalHeatGains().IHGsWinter;
+        const IHGs = total_IHGs * 1000;
+        console.log(IHGs);
+
+
+
+        const airflow = calculate_air_flow(U_values, areas, temps, TR_s, rho, Cp, IHGs);
+        let roundedAirflow = Math.round(airflow / 100) * 100;
+        $('#required_cooling_capacity').val(roundedAirflow.toFixed(2));
+
+        saveFormData();
+    }
+
+    // Function to calculate the air flow
+    function calculate_air_flow(U_values, areas, temps, TR_s, rho, Cp, IHGs) {
+        // Sum of U * A for all surfaces
+        let k = U_values.reduce((sum, U, index) => sum + U * areas[index], 0);
+
+        // Average temperature of the surfaces
+        let T_surface_avg = U_values.reduce((sum, U, index) => sum + U * areas[index] * temps[index], 0) / k;
+
+        // Temperature before reheat (assuming 15°C from the original equation)
+        const TB_s = parseNumber($('#summer_supply_temp').val());
+
+
+
+        // Calculate the air flow AF
+        const AF = (3600 * (-k * T_surface_avg + k * TR_s - IHGs)) / (rho * Cp * (TB_s - TR_s));
+
+        return AF;
+    }
+
+
+
+
+
+    function updateRoomTotalHeatGain() {
+        let totalHeatGainSummer = 0;
+        let totalHeatGainWinter = 0;
+
+        $('tbody tr').each(function() {
+            totalHeatGainSummer += parseNumber($(this).find('input[name$="_heat_gain_sum"]').val());
+            totalHeatGainWinter += parseNumber($(this).find('input[name$="_heat_gain_win"]').val());
+        });
+
+        $('input[name="total_surface_heat_gain_sum"]').val(totalHeatGainSummer.toFixed(2));
+        $('input[name="total_surface_heat_gain_win"]').val(totalHeatGainWinter.toFixed(2));
+    }
+
+    function updateTotalHeatGain() {
+        let totalHeatGainSummer = parseNumber($('input[name="total_surface_heat_gain_sum"]').val());
+        let totalHeatGainWinter = parseNumber($('input[name="total_surface_heat_gain_win"]').val());
+
+        let IHGs = getInternalHeatGains();
+        totalHeatGainSummer += IHGs.IHGsSummer;
+        totalHeatGainWinter += IHGs.IHGsWinter;
+
+        $('input[name="total_surface_heat_gain_sum"]').val(totalHeatGainSummer.toFixed(2));
+        $('input[name="total_surface_heat_gain_win"]').val(totalHeatGainWinter.toFixed(2));
+    }
+
+    // Supply System functions
+    function updateSupplyTemp() {
+        const selectedSystem = $('#supply_air_system').val();
+        const summerTempInput = $('#summer_supply_temp');
+        const winterTempInput = $('#winter_supply_temp');
+
+        if (selectedSystem && supplySystemsData[selectedSystem]) {
+            summerTempInput.val(supplySystemsData[selectedSystem].TempSupplySummer.toFixed(1));
+            winterTempInput.val(supplySystemsData[selectedSystem].TempSupplyWinter.toFixed(1));
+        } else {
+            summerTempInput.val('');
+            winterTempInput.val('');
+        }
+    }
+
+    function updateSupplyBeforeReheat(season) {
+        const supplyTemp = parseNumber($(`#${season}_supply_temp`).val());
+        const increaseDecrease = parseNumber($(`#${season}_increase_decrease`).val());
+        const supplyBeforeReheat = supplyTemp + increaseDecrease;
+        $(`#${season}_supply_before_reheat`).val(supplyBeforeReheat.toFixed(1));
         calculateHeatGain();
+    }
+
+    function updateDisplayedTemperatures() {
+        let summerTemp = $('#actual_room_temp_summer').val();
+        let winterTemp = $('#actual_room_temp_winter').val();
+
+
+        $('#actual_room_temp_summer').val(summerTemp);
+
+        $('#actual_room_temp_winter').val(winterTemp);
+    }
+
+    // Event listeners and initialization
+    function setupEventListeners() {
+        hideActualRoomTemps();
+        $('#calculateButton').prop('disabled', true);
+
+        $('#room_temp_summer, #room_temp_winter').on('input', function() {
+            checkEnableCalculateButton();
+        });
+
+        $('#supply_air_system').on('change', function() {
+            updateSupplyTemp();
+        });
+
+        $('#calculateButton').on('click', function() {
+            updateSupplyBeforeReheat('summer');
+            updateSupplyBeforeReheat('winter');
+            calculateHeatGain();
+            updateTotalHeatGain();
+            showAndUpdateDisplayedTemperatures();
+        });
+
+        // Save data whenever an input changes
+        $('input, select, textarea').on('change', saveFormData);
+    }
+
+    function checkEnableCalculateButton() {
+        let summerTemp = $('#room_temp_summer').val().trim();
+        let winterTemp = $('#room_temp_winter').val().trim();
+        let isEnabled = summerTemp !== '' && winterTemp !== '' && !isNaN(summerTemp) && !isNaN(winterTemp);
+        $('#calculateButton').prop('disabled', !isEnabled);
+    }
+
+    function hideActualRoomTemps() {
+        $('#actual_room_temp_summer').hide();
+        $('#actual_room_temp_winter').hide();
+    }
+
+    function showAndUpdateDisplayedTemperatures() {
+        let summerTemp = $('#actual_room_temp_summer').val();
+        let winterTemp = $('#actual_room_temp_winter').val();
+
+        $('#actual_room_temp_summer').val(summerTemp).show();
+        $('#actual_room_temp_winter').val(winterTemp).show();
+    }
+
+    function saveFormData() {
+        const formData = {};
+        $('input, select, textarea').each(function() {
+            formData[this.name] = $(this).val();
+        });
+        localStorage.setItem('heatGainFormData', JSON.stringify(formData));
+    }
+
+    function loadFormData() {
+        const savedData = localStorage.getItem('heatGainFormData');
+        if (savedData) {
+            const formData = JSON.parse(savedData);
+            for (const name in formData) {
+                $(`[name="${name}"]`).val(formData[name]);
+            }
+        }
+    }
+
+    function updateActualAirTemps() {
+        let summerSupplyBeforeReheat = parseFloat($('#summer_supply_before_reheat').val());
+        let winterSupplyBeforeReheat = parseFloat($('#winter_supply_before_reheat').val());
+
+        $('#summer_actual_air_temp').val(summerSupplyBeforeReheat.toFixed(1));
+        $('#winter_actual_air_temp').val(winterSupplyBeforeReheat.toFixed(1));
+    }
+
+    function updateSupplyBeforeReheat(season) {
+        const supplyTemp = parseNumber($(`#${season}_supply_temp`).val());
+        const increaseDecrease = parseNumber($(`#${season}_increase_decrease`).val());
+        const supplyBeforeReheat = supplyTemp + increaseDecrease;
+        $(`#${season}_supply_before_reheat`).val(supplyBeforeReheat.toFixed(1));
+        updateActualAirTemps(); // Call the function to update actual air temps
+        calculateHeatGain();
+    }
+
+    function updateRequiredAirflow() {
+        // Retrieve the required_airflow value from projectData
+        let requiredAirflow = parseNumber($('#required_airflow').val());
+
+
+        // Round the required_airflow value to the nearest 100
+        requiredAirflow = Math.round(requiredAirflow / 100) * 100;
+
+        // Set the value to the input fields
+        $('#required_cooling_capacity').val(requiredAirflow);
+        $('#extract_air_m3h').val(requiredAirflow);
+    }
+
+
+
+
+
+
+    $(document).ready(function() {
+        loadFormData();
+        setupEventListeners();
+        updateSupplyTemp();
+        hideActualRoomTemps();
+        checkEnableCalculateButton();
+        updateActualAirTemps();
+        updateRequiredAirflow();
     });
+
+
+
+
 </script>
 </body>
 </html>

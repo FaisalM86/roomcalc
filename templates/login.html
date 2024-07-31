@@ -5,29 +5,68 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - RoomCalc</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        .container {
+            max-width: 400px;
+        }
+        .card {
+            border: none;
+            border-radius: 1rem;
+            box-shadow: 0 0.5rem 1rem 0 rgba(0, 0, 0, 0.1);
+        }
+        .card-header {
+            background-color: #007bff;
+            color: white;
+            text-align: center;
+            font-weight: bold;
+            border-radius: 1rem 1rem 0 0 !important;
+            padding: 1.5rem;
+        }
+        .form-control {
+            border-radius: 0.5rem;
+        }
+        .btn-primary {
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            font-weight: bold;
+        }
+        .alert {
+            border-radius: 0.5rem;
+        }
+    </style>
 </head>
 <body>
 <div class="container mt-5">
-    <h1 class="text-center">Login</h1>
-    <form method="POST" class="mt-4">
-        {{ form.hidden_tag() }}
-        <div class="form-group">
-            {{ form.username.label(class="form-control-label") }}
-            {{ form.username(class="form-control") }}
+    <div class="card">
+        <div class="card-header">
+            <h2 class="mb-0">Login</h2>
         </div>
-        <div class="form-group">
-            {{ form.password.label(class="form-control-label") }}
-            {{ form.password(class="form-control") }}
+        <div class="card-body">
+            <form method="POST" class="mt-4">
+                {{ form.hidden_tag() }}
+                <div class="form-group">
+                    {{ form.username.label(class="form-control-label") }}
+                    {{ form.username(class="form-control", placeholder="Enter your username") }}
+                </div>
+                <div class="form-group">
+                    {{ form.password.label(class="form-control-label") }}
+                    {{ form.password(class="form-control", placeholder="Enter your password") }}
+                </div>
+                <button type="submit" class="btn btn-primary btn-block">{{ form.submit.label }}</button>
+            </form>
+            {% with messages = get_flashed_messages() %}
+                {% if messages %}
+                    <div class="alert alert-danger mt-4">
+                        {{ messages[0] }}
+                    </div>
+                {% endif %}
+            {% endwith %}
         </div>
-        <button type="submit" class="btn btn-primary">{{ form.submit.label }}</button>
-    </form>
-    {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            <div class="alert alert-danger mt-4">
-                {{ messages[0] }}
-            </div>
-        {% endif %}
-    {% endwith %}
+    </div>
 </div>
 </body>
 </html>

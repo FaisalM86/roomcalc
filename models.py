@@ -59,7 +59,6 @@ class Room(Base):
 
 class WallData(Base):
     __tablename__ = 'wall_data'
-
     WallID = Column(Integer, primary_key=True, autoincrement=True)
     RoomID = Column(Integer, ForeignKey('rooms.RoomID'), nullable=False)
     Length = Column(Float, nullable=False)
@@ -83,7 +82,7 @@ class SupplySystem(Base):
     SystemName = Column(String)
     TempSupplyWinter = Column(Float)
     TempSupplySummer = Column(Float)
-    CoolingEnthalpy = Column(Float)
+    CoolingEnthalpy = Column(Float())
     FanHeat = Column(Float)
     project = relationship("Project", back_populates="supply_systems")
     room_supply_systems = relationship("RoomSupplySystem", back_populates="supply_system")
