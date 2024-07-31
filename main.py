@@ -1,8 +1,10 @@
 import json
+from sqlalchemy.exc import IntegrityError
 from flask_wtf.csrf import CSRFProtect, generate_csrf
 from flask import Flask, request, jsonify, render_template, redirect, url_for, flash, session
+from markupsafe import Markup
 from sqlalchemy.exc import NoResultFound
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, sessionmaker
 from werkzeug.security import generate_password_hash, check_password_hash
 from data_access import create_session, get_project_by_id, get_all_projects
 from forms import RegistrationForm, LoginForm, ProjectForm, RoomForm
@@ -10,33 +12,57 @@ from models import User, Room, WallData, Project
 from auth import authenticate_user, authorize_user
 from project_management import create_project, delete_project, update_project
 from reporting import generate_summary_report, generate_heat_load_list, generate_detailed_report
-from calculations import calculate_room_parameters
-import config
+
+import logging
+
+logging.basicConfig(level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your_secret_key_here'
 csrf = CSRFProtect(app)
 
+
+@app.before_request
+def log_request_info():
+    app.logger.debug('Headers: %s', request.headers)
+    app.logger.debug('Body: %s', request.get_data())
+
+
 @app.context_processor
 def inject_csrf_token():
     return dict(csrf_token=generate_csrf())
+
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
+@app.template_filter('tojson')
+def to_json(value):
+    return Markup(json.dumps(value))
+
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegistrationForm()
     if form.validate_on_submit():
-        session_db = create_session()  # Rename to avoid conflict with Flask session
-        hashed_password = generate_password_hash(form.password.data, method='pbkdf2:sha256')
-        new_user = User(username=form.username.data, password=hashed_password, access_level=1)  # Default access level
-        session_db.add(new_user)
-        session_db.commit()
-        flash('Account created successfully!', 'success')
-        return redirect(url_for('login'))
+        session_db = create_session()
+        try:
+            hashed_password = generate_password_hash(form.password.data, method='pbkdf2:sha256')
+            new_user = User(username=form.username.data, password=hashed_password, access_level=1)
+            session_db.add(new_user)
+            session_db.commit()
+            flash('Account created successfully!', 'success')
+            return redirect(url_for('login'))
+        except IntegrityError:
+            session_db.rollback()
+            flash('Username already exists. Please choose a different one.', 'danger')
+        except Exception as e:
+            session_db.rollback()
+            flash('An error occurred. Please try again.', 'danger')
+        finally:
+            session_db.close()
     return render_template('register.html', form=form)
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -52,6 +78,7 @@ def login():
             flash('Login Unsuccessful. Please check username and password', 'danger')
     return render_template('login.html', form=form)
 
+
 @app.route('/dashboard')
 def dashboard():
     if 'user_id' not in session:
@@ -61,7 +88,8 @@ def dashboard():
     session_db = create_session()  # Create a new session for database operations
     user = session_db.query(User).filter_by(id=session['user_id']).first()
 
-    if not user or not authorize_user(user.username, required_access_level=1):  # Ensure required access level is provided
+    if not user or not authorize_user(user.username,
+                                      required_access_level=1):  # Ensure required access level is provided
         session_db.close()
         flash('You do not have the required permissions to access this page.', 'danger')
         return redirect(url_for('login'))
@@ -83,6 +111,8 @@ def dashboard():
 
     # Pass the projects data as a JSON string
     return render_template('dashboard.html', projects=projects_data)
+
+
 @app.route('/project/new', methods=['GET', 'POST'])
 def new_project():
     """ Route to create a new project. """
@@ -92,52 +122,6 @@ def new_project():
         flash('Project created successfully!')
         return redirect(url_for('dashboard'))
     return render_template('project_form.html', form=form)
-
-@app.route('/project/<int:project_id>/room/new', methods=['GET', 'POST'])
-def new_room(project_id):
-    form = RoomForm()
-    if form.validate_on_submit():
-        session_db = create_session()
-        try:
-            new_room = Room(
-                ProjectID=project_id,
-                LocationNo=form.LocationNo.data,
-                RoomName=form.RoomName.data,
-                Elevation=form.Elevation.data,
-                Height=form.Height.data,
-                MinVentilationPerPerson=form.MinVentilationPerPerson.data,
-                MinVentilationPerArea=form.MinVentilationPerArea.data,
-                MinAirChangeRate=form.MinAirChangeRate.data,
-                Volume=form.Volume.data,
-                FloorArea=form.Area.data,
-                Occupancy=form.Occupancy.data,
-                RequiredAirflow=form.RequiredAirflow.data,
-                Remarks=form.Remarks.data
-            )
-            session_db.add(new_room)
-            session_db.commit()
-
-            for wall_form in form.walls.entries:
-                new_wall = WallData(
-                    RoomID=new_room.RoomID,
-                    Length=wall_form.data['Length'],
-                    Angle=wall_form.data['Angle']
-                )
-                session_db.add(new_wall)
-
-            session_db.commit()
-            flash('Room and its walls created successfully!')
-            return redirect(url_for('dashboard'))
-        except Exception as e:
-            print(f"Error creating room: {e}")  # Debugging line
-            session_db.rollback()
-        finally:
-            session_db.close()
-    else:
-        print("Form validation failed.")
-        print(form.errors)  # Debugging line
-    return render_template('room_form.html', form=form)
-
 
 
 @app.route('/project/<int:project_id>/edit', methods=['GET', 'POST'])
@@ -183,70 +167,227 @@ def delete_project(project_id):
     session_db.close()
     return redirect(url_for('dashboard'))
 
+
 @app.route('/project/<int:project_id>/report')
 def project_report(project_id):
     """ Route to generate reports for a project. """
     summary = generate_summary_report(project_id)
     heat_load_list = generate_heat_load_list(project_id)
     detailed_report = generate_detailed_report(project_id)
-    return render_template('report.html', summary=summary, heat_load_list=heat_load_list, detailed_report=detailed_report)
+    return render_template('report.html', summary=summary, heat_load_list=heat_load_list,
+                           detailed_report=detailed_report)
+
+
+#-----------------------Room-----------------------------------
+
+
+@app.route('/project/<int:project_id>/room/new', methods=['GET', 'POST'])
+def new_room(project_id):
+    form = RoomForm()
+    calculated_area = 0.0
+    calculated_volume = 0.0
+    calculated_airflow = 0.0
+
+    if request.method == 'POST':
+        logging.info(f"Received POST request for new room in project {project_id}")
+        logging.debug(f"Form data: {request.form}")
+
+        if form.validate_on_submit():
+            logging.info("Form validation successful")
+            session_db = create_session()
+            try:
+                new_room = Room(
+                    ProjectID=project_id,
+                    LocationNo=form.LocationNo.data,
+                    RoomName=form.RoomName.data,
+                    Elevation=form.Elevation.data,
+                    Height=form.Height.data,
+                    MinVentilationPerPerson=form.MinVentilationPerPerson.data,
+                    MinVentilationPerArea=form.MinVentilationPerArea.data,
+                    MinAirChangeRate=form.MinAirChangeRate.data,
+                    Occupancy=form.Occupancy.data,
+                    Remarks=form.Remarks.data
+                )
+                session_db.add(new_room)
+                session_db.flush()  # This assigns an ID to new_room
+
+                # Add walls and create wall data array
+                wall_data = []
+                for wall_form in form.walls:
+                    new_wall = WallData(
+                        RoomID=new_room.RoomID,
+                        Length=wall_form.Length.data,
+                        Angle=wall_form.Angle.data
+                    )
+                    session_db.add(new_wall)
+                    wall_data.append((wall_form.Length.data, wall_form.Angle.data))
+
+                # Calculate room properties
+                calculated_area = calculate_floor_area(wall_data)
+                calculated_volume = room_volume(calculated_area, form.Height.data)
+                calculated_airflow = calculate_minimum_airflow(
+                    calculated_volume,
+                    form.MinAirChangeRate.data,
+                    form.Occupancy.data,
+                    form.MinVentilationPerPerson.data,
+                    calculated_area,
+                    form.MinVentilationPerArea.data
+                )
+                new_room.FloorArea = calculated_area
+                new_room.Volume = calculated_volume
+                new_room.RequiredAirflow = calculated_airflow
+
+                session_db.commit()
+                logging.info("Successfully committed new room to database")
+                flash('Room and its walls created successfully!', 'success')
+                return redirect(url_for('dashboard'))
+            except Exception as e:
+                session_db.rollback()
+                logging.error(f"Error occurred while creating room: {str(e)}")
+                flash(f'An error occurred: {str(e)}', 'error')
+            finally:
+                session_db.close()
+        else:
+            logging.warning("Form validation failed")
+            for field, errors in form.errors.items():
+                for error in errors:
+                    flash(f"Error in {getattr(form, field).label.text}: {error}", 'error')
+                    logging.warning(f"Validation error in {field}: {error}")
+
+    return render_template('room_form.html', form=form, project_id=project_id, calculated_area=calculated_area,
+                           calculated_volume=calculated_volume, calculated_airflow=calculated_airflow)
+
 
 @app.route('/room/<int:room_id>/edit', methods=['GET', 'POST'])
 def edit_room(room_id):
+    app.logger.info(f"Received request to edit room {room_id}")
+
+    app.logger.debug(f"Request method: {request.method}")
+    app.logger.debug(f"Form data: {request.form}")
     session_db = create_session()
     room = session_db.query(Room).filter_by(RoomID=room_id).first()
+
+    if not room:
+        flash('Room not found', 'error')
+        return redirect(url_for('dashboard'))
+
     form = RoomForm(obj=room)
+    calculated_area = room.FloorArea
+    calculated_volume = room.Volume
+    calculated_airflow = room.RequiredAirflow
+
+    if request.method == 'GET':
+        # Populate form with existing walls
+        while len(form.walls) > 0:
+            form.walls.pop_entry()
+        for wall in room.walls:
+            form.walls.append_entry({
+                'WallID': wall.WallID,
+                'Length': wall.Length,
+                'Angle': wall.Angle if wall.Angle is not None else 0
+            })
 
     if form.validate_on_submit():
-        # Update room properties
-        form.populate_obj(room)
+        try:
+            # Update room properties
+            form.populate_obj(room)
 
-        # Process walls
-        existing_wall_ids = set(wall.WallID for wall in room.walls)
-        updated_wall_ids = set()
+            # Process walls
+            existing_wall_ids = set(wall.WallID for wall in room.walls)
+            updated_wall_ids = set()
+            wall_data = []
 
-        for wall_form in form.walls.entries:
-            wall_id = wall_form.form.WallID.data
+            for wall_form in form.walls:
+                wall_id = wall_form.WallID.data
 
-            # Check if the wall is marked for removal
-            if request.form.get(f'walls-{wall_form.form.WallID.data}-removed') != 'true':
                 if wall_id and wall_id in existing_wall_ids:
                     # Update existing wall
-                    wall = session_db.query(WallData).get(wall_id)
-                    wall.Length = wall_form.form.Length.data
-                    wall.Angle = wall_form.form.Angle.data
+                    wall = next(wall for wall in room.walls if wall.WallID == wall_id)
+                    wall.Length = wall_form.Length.data
+                    wall.Angle = wall_form.Angle.data
                     updated_wall_ids.add(wall_id)
                 else:
                     # Add new wall
                     new_wall = WallData(
                         RoomID=room.RoomID,
-                        Length=wall_form.form.Length.data,
-                        Angle=wall_form.form.Angle.data
+                        Length=wall_form.Length.data,
+                        Angle=wall_form.Angle.data
                     )
                     session_db.add(new_wall)
+                    room.walls.append(new_wall)
+                wall_data.append((wall_form.Length.data, wall_form.Angle.data))
 
-        # Remove walls that were not updated or added
-        for wall_id in existing_wall_ids - updated_wall_ids:
-            wall_to_remove = session_db.query(WallData).get(wall_id)
-            session_db.delete(wall_to_remove)
+            # Remove walls that were not updated or added
+            room.walls = [wall for wall in room.walls if wall.WallID in updated_wall_ids or wall.WallID is None]
 
-        # Recalculate room properties
-        updated_walls = [wall for wall in room.walls if wall.WallID in updated_wall_ids] + \
-                        [wall for wall in session_db.new if isinstance(wall, WallData) and wall.RoomID == room.RoomID]
+            # Recalculate room properties
+            calculated_area = calculate_floor_area(wall_data)
+            calculated_volume = room_volume(calculated_area, room.Height)
+            calculated_airflow = calculate_minimum_airflow(
+                calculated_volume,
+                room.MinAirChangeRate,
+                room.Occupancy,
+                room.MinVentilationPerPerson,
+                calculated_area,
+                room.MinVentilationPerArea
+            )
+            room.FloorArea = calculated_area
+            room.Volume = calculated_volume
+            room.RequiredAirflow = calculated_airflow
 
-        if len(updated_walls) >= 2:
-            room.FloorArea = updated_walls[0].Length * updated_walls[1].Length
-        else:
-            room.FloorArea = 0
+            session_db.commit()
+            flash('Room and its walls updated successfully!', 'success')
+            return redirect(url_for('dashboard'))
+        except Exception as e:
+            session_db.rollback()
+            flash(f'An error occurred: {str(e)}', 'error')
+    else:
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"Error in {getattr(form, field).label.text}: {error}", 'error')
 
-        room.Volume = room.FloorArea * room.Height
-        room.RequiredAirflow = room.Volume * room.MinAirChangeRate
+    return render_template('room_form.html', form=form, room=room, calculated_area=calculated_area,
+                           calculated_volume=calculated_volume, calculated_airflow=calculated_airflow)
 
-        session_db.commit()
-        flash('Room and its walls updated successfully!')
-        return redirect(url_for('dashboard'))
 
-    return render_template('room_form.html', form=form, room=room)
+##-------------Calculations-------------------
+
+import math
+
+
+def calculate_floor_area(walls):
+    coordinates = [(0, 0)]  # Start at origin
+    for length, angle in walls:
+        last_x, last_y = coordinates[-1]
+        angle_rad = math.radians(angle)
+        x = last_x + length * math.cos(angle_rad)
+        y = last_y + length * math.sin(angle_rad)
+        coordinates.append((x, y))
+
+    if coordinates[0] == coordinates[-1]:
+        coordinates.pop()
+
+    n = len(coordinates)
+    area = 0.0
+    for i in range(n):
+        j = (i + 1) % n
+        area += coordinates[i][0] * coordinates[j][1]
+        area -= coordinates[j][0] * coordinates[i][1]
+    area = abs(area) / 2.0
+
+    return round(area, 1)
+
+
+def room_volume(floor_area, height):
+    return round(floor_area * height, 1)
+
+
+def calculate_minimum_airflow(room_volume, air_change_rate, num_persons, airflow_per_person, floor_area,
+                              airflow_per_area):
+    v_ach = room_volume * air_change_rate
+    v_pers = num_persons * airflow_per_person * 3.6  # Convert l/s to m³/h
+    v_area = floor_area * airflow_per_area * 3.6  # Convert l/s/m² to m³/h
+    return max(v_ach, v_pers, v_area)
 
 
 @app.route('/room/<int:room_id>/delete', methods=['POST'])
@@ -258,6 +399,7 @@ def delete_room(room_id):
     flash('Room deleted successfully!')
     return redirect(url_for('dashboard'))
 
+
 @app.route('/room/<int:room_id>/report')
 def room_report(room_id):
     # Code to generate room report
@@ -265,32 +407,122 @@ def room_report(room_id):
 
 
 # Heat gain
+def safe_float(value, default=0.0):
+    try:
+        return float(value) if value.strip() else default
+    except (ValueError, AttributeError):
+        return default
 
 @app.route('/heat_gain/<int:room_id>', methods=['GET', 'POST'])
 def heat_gain(room_id):
     session_db = create_session()
-    room = session_db.query(Room).filter_by(RoomID=room_id).first()
-    project = session_db.query(Project).filter_by(ProjectID=room.ProjectID).first()
+    try:
+        room = session_db.query(Room).filter_by(RoomID=room_id).first()
+        if not room:
+            flash('Room not found.', 'danger')
+            return redirect(url_for('dashboard'))
+
+        project = session_db.query(Project).filter_by(ProjectID=room.ProjectID).first()
+        if not project:
+            flash('Project not found.', 'danger')
+            return redirect(url_for('dashboard'))
+
+        supply_systems = session_db.query(SupplySystem).all()
+        supply_systems_data = {system.SystemNo: {
+            'TempSupplySummer': system.TempSupplySummer,
+            'TempSupplyWinter': system.TempSupplyWinter
+        } for system in supply_systems}
+
+        roof_area = room.FloorArea
+        floor_area = room.FloorArea
+        required_airflow = room.RequiredAirflow or 1
+        roof_u_value = project.DefaultUValue
+        floor_u_value = project.DefaultUValue
+        walls = session_db.query(WallData).filter_by(RoomID=room_id).all()
+        height = room.Height
+        airflow = room.RequiredAirflow
 
 
-    if not room:
-        flash('Room not found.', 'danger')
+
+
+
+        return render_template('heat_gain.html',
+                               supply_systems=supply_systems,
+                               roof_area=roof_area,
+                               floor_area=floor_area,
+                               roof_u_value=roof_u_value,
+                               floor_u_value=floor_u_value,
+                               walls=walls,
+                               ambient_temp_summer=project.AmbientTempSummer,
+                               ambient_temp_winter=project.AmbientTempWinter,
+                               room=room,
+                               height=height,
+                               project=project,
+                               density=project.Density,
+                               heat_capacity=project.HeatCapacity,
+                               required_airflow=required_airflow,
+                               supply_systems_data=supply_systems_data,
+                               airflow=airflow,
+                               csrf_token=generate_csrf())
+    except Exception as e:
+        flash('An error occurred: {}'.format(e), 'danger')
         return redirect(url_for('dashboard'))
-
-    roof_area = room.FloorArea
-    floor_area = room.FloorArea
-    roof_u_value =project.DefaultUValue
-    floor_u_value = project.DefaultUValue
-    height = room.Height
-
-    # Fetch wall data
-    walls = session_db.query(WallData).filter_by(RoomID=room_id).all()
+    finally:
+        session_db.close()
 
 
+#--Supply system
+from forms import SupplySystemForm
+from models import SupplySystem
 
-    return render_template('heat_gain.html', roof_area=roof_area,
-                           floor_area=floor_area,roof_u_value=roof_u_value,
-                           floor_u_value=floor_u_value, walls=walls, height=height)
+@app.route('/supply_systems', methods=['GET', 'POST'])
+def supply_systems():
+    app.logger.info('Received request to view supply systems')
+    form = SupplySystemForm()
+    session_db = create_session()
+
+    if request.method == 'POST':
+        app.logger.info('POST request received')
+        app.logger.info(f'Form data: {request.form}')
+
+    if form.validate_on_submit():
+        app.logger.info('Form validated successfully')
+        new_system = SupplySystem(
+            SystemNo=form.SystemNo.data,
+            SystemName=form.SystemName.data,
+            TempSupplyWinter=form.TempSupplyWinter.data,
+            TempSupplySummer=form.TempSupplySummer.data,
+            CoolingEnthalpy=form.CoolingEnthalpy.data,
+            FanHeat=form.FanHeat.data
+        )
+        session_db.add(new_system)
+        session_db.commit()
+        app.logger.info('Supply system added successfully')
+        flash('System added successfully!', 'success')
+        session_db.close()
+        return redirect(url_for('supply_systems'))
+    else:
+        app.logger.warning('Form validation failed')
+        for field, errors in form.errors.items():
+            for error in errors:
+                flash(f"Error in {getattr(form, field).label.text}: {error}", 'error')
+                app.logger.warning(f"Validation error in {field}: {error}")
+
+    systems = session_db.query(SupplySystem).all()
+    session_db.close()
+    return render_template('supply_systems.html', form=form, systems=systems)
+
+@app.route('/delete_system/<int:system_id>', methods=['POST'])
+def delete_system(system_id):
+    session_db = create_session()
+    system = session_db.query(SupplySystem).get(system_id)
+    if system:
+        session_db.delete(system)
+        session_db.commit()
+        flash('System deleted successfully!', 'success')
+    session_db.close()
+    return redirect(url_for('supply_systems'))
+
 if __name__ == '__main__':
     from models import Base
     from sqlalchemy import create_engine
@@ -298,5 +530,6 @@ if __name__ == '__main__':
 
     engine = create_engine(f"sqlite:///{DATABASE_PATH}")
     Base.metadata.create_all(engine)
+
 
     app.run(debug=True)
