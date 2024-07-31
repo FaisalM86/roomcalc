@@ -524,6 +524,7 @@ def delete_system(system_id):
     return redirect(url_for('supply_systems'))
 
 if __name__ == '__main__':
+    import os
     from models import Base
     from sqlalchemy import create_engine
     from config import DATABASE_PATH
@@ -532,4 +533,4 @@ if __name__ == '__main__':
     Base.metadata.create_all(engine)
 
 
-    app.run(debug=True ,port=8080)
+    app.run(host='0.0.0.0', port=os.environ.get('PORT', 5000))
