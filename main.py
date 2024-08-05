@@ -460,6 +460,7 @@ def delete_system(system_id):
     return redirect(url_for('supply_systems'))
 
 if __name__ == '__main__':
+    import os
     from models import Base
     from sqlalchemy import create_engine
     from config import DATABASE_PATH
@@ -467,5 +468,5 @@ if __name__ == '__main__':
     engine = create_engine(f"sqlite:///{DATABASE_PATH}")
     Base.metadata.create_all(engine)
 
-
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=os.environ.get('PORT', 5000))
+    #app.run(debug=True)
