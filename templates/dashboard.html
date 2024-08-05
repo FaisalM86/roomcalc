@@ -99,18 +99,18 @@
                 if (project) {
                     $('#projectName').text(project.ProjectName);
                     $('#projectInfo').html(`
-                        <strong>Client:</strong> ${project.Client}<br>
-                        <strong>Contract:</strong> ${project.Contract}<br>
-                        <strong>Sub Contractor:</strong> ${project.SubContractor}<br>
-                        <strong>Document Number:</strong> ${project.DocumentNumber}<br>
-                        <strong>Revision:</strong> ${project.Revision}<br>
-                        <strong>Revision Date:</strong> ${project.RevisionDate}<br>
-                        <strong>Ambient Temp Summer:</strong> ${project.AmbientTempSummer}<br>
-                        <strong>Ambient Temp Winter:</strong> ${project.AmbientTempWinter}<br>
-                        <strong>Default U-Value:</strong> ${project.DefaultUValue}<br>
-                        <strong>Density:</strong> ${project.Density}<br>
-                        <strong>Heat Capacity:</strong> ${project.HeatCapacity}
-                    `);
+                    <strong>Client:</strong> ${project.Client}<br>
+                    <strong>Contract:</strong> ${project.Contract}<br>
+                    <strong>Sub Contractor:</strong> ${project.SubContractor}<br>
+                    <strong>Document Number:</strong> ${project.DocumentNumber}<br>
+                    <strong>Revision:</strong> ${project.Revision}<br>
+                    <strong>Revision Date:</strong> ${project.RevisionDate}<br>
+                    <strong>Ambient Temp Summer:</strong> ${project.AmbientTempSummer}<br>
+                    <strong>Ambient Temp Winter:</strong> ${project.AmbientTempWinter}<br>
+                    <strong>Default U-Value:</strong> ${project.DefaultUValue}<br>
+                    <strong>Density:</strong> ${project.Density}<br>
+                    <strong>Heat Capacity:</strong> ${project.HeatCapacity}
+                `);
 
                     $('#editProjectBtn').attr('href', `/project/${project.ProjectID}/edit`);
                     $('#deleteProjectForm').attr('action', `/project/${project.ProjectID}/delete`);
@@ -120,24 +120,24 @@
                     $('#roomsList').empty();
                     project.rooms.forEach(room => {
                         $('#roomsList').append(`
-                            <li class="list-group-item">
-                                <h5>Room: ${room.RoomName}</h5>
-                                <p>
-                                    <strong>Min Air Change Rate:</strong> ${room.MinAirChangeRate}<br>
-                                    <strong>Min Ventilation Per Area:</strong> ${room.MinVentilationPerArea}<br>
-                                    <strong>Min Ventilation Per Person:</strong> ${room.MinVentilationPerPerson}<br>
-                                    <strong>Remarks:</strong> ${room.Remarks}
-                                </p>
-                                <div class="float-right mb-2">
-                                    <a href="/room/${room.RoomID}/edit" class="btn btn-warning btn-sm">Edit</a>
-                                    <form action="/room/${room.RoomID}/delete" method="POST" style="display: inline;">
-                                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                                        <button type="submit" class="btn btn-danger btn-sm">Delete</button>
-                                    </form>
-                                    <a href="/room/${room.RoomID}/report" class="btn btn-info btn-sm">Report</a>
-                                </div>
-                            </li>
-                        `);
+                        <li class="list-group-item">
+                            <h5>Room: ${room.RoomName}</h5>
+                            <p>
+                                <strong>Min Air Change Rate:</strong> ${room.MinAirChangeRate}<br>
+                                <strong>Min Ventilation Per Area:</strong> ${room.MinVentilationPerArea}<br>
+                                <strong>Min Ventilation Per Person:</strong> ${room.MinVentilationPerPerson}<br>
+                                <strong>Remarks:</strong> ${room.Remarks}
+                            </p>
+                            <div class="float-right mb-2">
+                                <a href="/room/${room.RoomID}/edit" class="btn btn-warning btn-sm">Edit</a>
+                                <form class="ajax-delete" action="/room/${room.RoomID}/delete" method="POST" style="display: inline;">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                                    <button type="submit" class="btn btn-danger btn-sm">Delete</button>
+                                </form>
+                                <a href="/room/${room.RoomID}/report" class="btn btn-info btn-sm">Report</a>
+                            </div>
+                        </li>
+                    `);
                     });
 
                     $('#projectDetails').show();
@@ -147,13 +147,30 @@
             }
         });
 
-        $('#deleteProjectForm').submit(function(e) {
+        $(document).on('submit', '.ajax-delete', function(e) {
             e.preventDefault();
-            if (confirm('Are you sure you want to delete this project?')) {
-                this.submit();
+            const form = $(this);
+            if (confirm('Are you sure you want to delete this room?')) {
+                $.ajax({
+                    type: form.attr('method'),
+                    url: form.attr('action'),
+                    data: form.serialize(),
+                    success: function(response) {
+                        if (response.status === "success") {
+                            form.closest('.list-group-item').remove();
+                            alert(response.message);
+                        } else {
+                            alert(response.message);
+                        }
+                    },
+                    error: function(xhr) {
+                        alert('An error occurred: ' + xhr.responseText);
+                    }
+                });
             }
         });
     });
+
 </script>
 </body>
 </html>

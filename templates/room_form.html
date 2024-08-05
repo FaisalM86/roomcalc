@@ -23,7 +23,7 @@
 <a href="{{ url_for('dashboard') }}" class="btn btn-secondary mt-3 ml-2">Dashboard</a>
 <div class="container mt-5">
     <h1 class="mb-4">{% if room %}Edit Room{% else %}Create Room{% endif %}</h1>
-    <form method="POST" id="roomForm">
+    <form method="POST" id="roomForm" action="{% if room %}{{ url_for('edit_room', room_id=room.RoomID) }}{% else %}{{ url_for('new_room', project_id=project_id) }}{% endif %}">
         {{ form.hidden_tag() }}
 
         <div class="form-row">
@@ -123,7 +123,9 @@
         </div>
 
         <button type="button" id="calculateButton" class="btn btn-secondary mt-3">Calculate</button>
-        {{ form.submit(class="btn btn-primary mt-3", id="saveButton") }}
+        <button type="submit" class="btn btn-primary btn-block">{{ 'Update Room' if room else 'Create Room' }}</button>
+
+
     </form>
 </div>
 
@@ -161,10 +163,7 @@
             calculateValues();
         });
 
-        $('#saveButton').click(function(e) {
-            e.preventDefault();
-            saveRoom();
-        });
+
 
         canvas.addEventListener('mousedown', function(event) {
             isDragging = true;
@@ -275,7 +274,7 @@
         }
 
         function isClosedRoom(points) {
-            const tolerance = 1; // Increased tolerance
+            const tolerance = 1;
             const dx = points[0].x - points[points.length - 1].x;
             const dy = points[0].y - points[points.length - 1].y;
             const distance = Math.sqrt(dx * dx + dy * dy);
@@ -365,10 +364,7 @@
             return Math.max(
                 (occupancy * minVentilationPerPerson * 3.6) + (area * minVentilationPerArea * 3.6),
                 volume * minAirChangeRate
-
             );
-            console.log("Minimum Air Flow:", minimumAirFlow);
-
         }
 
         function saveRoom() {
@@ -380,7 +376,6 @@
             drawRoom();
 
             if (errorMessage.textContent) {
-                // If there's an error message, don't proceed
                 return;
             }
 
@@ -389,14 +384,19 @@
                 method: 'POST',
                 body: new FormData(roomForm),
             })
-                .then(response => response.json())
+                .then(response => {
+                    if (!response.ok) {
+                        return response.text().then(text => { throw new Error(text) });
+                    }
+                    return response.json();
+                })
                 .then(data => {
-                    if (data.success) {
-                        // If save was successful, redirect to heat gain page
-                        window.location.href = "{{ url_for('heat_gain', room_id=room.RoomID) if room else url_for('heat_gain', room_id=data.room_id) }}";
+                    if (data.status === "success") {
+                        console.log('Success:', data.message);
+                        window.location.href = "{{ url_for('dashboard') }}";  // Redirect to dashboard on success
                     } else {
-                        // If there was an error, display it
-                        errorMessage.textContent = data.error || 'An error occurred while saving the room.';
+                        console.error('Error:', data.message);
+                        errorMessage.textContent = data.message;
                     }
                 })
                 .catch(error => {
@@ -405,7 +405,8 @@
                 });
         }
     });
-</script>
 
+
+</script>
 </body>
 </html>

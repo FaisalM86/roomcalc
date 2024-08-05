@@ -184,9 +184,7 @@ def project_report(project_id):
 @app.route('/project/<int:project_id>/room/new', methods=['GET', 'POST'])
 def new_room(project_id):
     form = RoomForm()
-    calculated_area = 0.0
-    calculated_volume = 0.0
-    calculated_airflow = 0.0
+
 
     if request.method == 'POST':
         logging.info(f"Received POST request for new room in project {project_id}")
@@ -222,25 +220,10 @@ def new_room(project_id):
                     session_db.add(new_wall)
                     wall_data.append((wall_form.Length.data, wall_form.Angle.data))
 
-                # Calculate room properties
-                calculated_area = calculate_floor_area(wall_data)
-                calculated_volume = room_volume(calculated_area, form.Height.data)
-                calculated_airflow = calculate_minimum_airflow(
-                    calculated_volume,
-                    form.MinAirChangeRate.data,
-                    form.Occupancy.data,
-                    form.MinVentilationPerPerson.data,
-                    calculated_area,
-                    form.MinVentilationPerArea.data
-                )
-                new_room.FloorArea = calculated_area
-                new_room.Volume = calculated_volume
-                new_room.RequiredAirflow = calculated_airflow
-
                 session_db.commit()
                 logging.info("Successfully committed new room to database")
                 flash('Room and its walls created successfully!', 'success')
-                return redirect(url_for('dashboard'))
+                return redirect(url_for('heat_gain', room_id=new_room.RoomID))
             except Exception as e:
                 session_db.rollback()
                 logging.error(f"Error occurred while creating room: {str(e)}")
@@ -254,8 +237,7 @@ def new_room(project_id):
                     flash(f"Error in {getattr(form, field).label.text}: {error}", 'error')
                     logging.warning(f"Validation error in {field}: {error}")
 
-    return render_template('room_form.html', form=form, project_id=project_id, calculated_area=calculated_area,
-                           calculated_volume=calculated_volume, calculated_airflow=calculated_airflow)
+    return render_template('room_form.html', form=form, project_id=project_id)
 
 
 @app.route('/room/<int:room_id>/edit', methods=['GET', 'POST'])
@@ -266,15 +248,14 @@ def edit_room(room_id):
     app.logger.debug(f"Form data: {request.form}")
     session_db = create_session()
     room = session_db.query(Room).filter_by(RoomID=room_id).first()
+    project = session_db.query(Project).filter_by(ProjectID=room.ProjectID).first()
 
     if not room:
         flash('Room not found', 'error')
         return redirect(url_for('dashboard'))
 
     form = RoomForm(obj=room)
-    calculated_area = room.FloorArea
-    calculated_volume = room.Volume
-    calculated_airflow = room.RequiredAirflow
+
 
     if request.method == 'GET':
         # Populate form with existing walls
@@ -320,24 +301,11 @@ def edit_room(room_id):
             # Remove walls that were not updated or added
             room.walls = [wall for wall in room.walls if wall.WallID in updated_wall_ids or wall.WallID is None]
 
-            # Recalculate room properties
-            calculated_area = calculate_floor_area(wall_data)
-            calculated_volume = room_volume(calculated_area, room.Height)
-            calculated_airflow = calculate_minimum_airflow(
-                calculated_volume,
-                room.MinAirChangeRate,
-                room.Occupancy,
-                room.MinVentilationPerPerson,
-                calculated_area,
-                room.MinVentilationPerArea
-            )
-            room.FloorArea = calculated_area
-            room.Volume = calculated_volume
-            room.RequiredAirflow = calculated_airflow
+
 
             session_db.commit()
             flash('Room and its walls updated successfully!', 'success')
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('heat_gain', room_id=room.RoomID))
         except Exception as e:
             session_db.rollback()
             flash(f'An error occurred: {str(e)}', 'error')
@@ -346,58 +314,26 @@ def edit_room(room_id):
             for error in errors:
                 flash(f"Error in {getattr(form, field).label.text}: {error}", 'error')
 
-    return render_template('room_form.html', form=form, room=room, calculated_area=calculated_area,
-                           calculated_volume=calculated_volume, calculated_airflow=calculated_airflow)
+    return render_template('room_form.html', form=form, room=room)
 
-
-##-------------Calculations-------------------
-
-import math
-
-
-def calculate_floor_area(walls):
-    coordinates = [(0, 0)]  # Start at origin
-    for length, angle in walls:
-        last_x, last_y = coordinates[-1]
-        angle_rad = math.radians(angle)
-        x = last_x + length * math.cos(angle_rad)
-        y = last_y + length * math.sin(angle_rad)
-        coordinates.append((x, y))
-
-    if coordinates[0] == coordinates[-1]:
-        coordinates.pop()
-
-    n = len(coordinates)
-    area = 0.0
-    for i in range(n):
-        j = (i + 1) % n
-        area += coordinates[i][0] * coordinates[j][1]
-        area -= coordinates[j][0] * coordinates[i][1]
-    area = abs(area) / 2.0
-
-    return round(area, 1)
-
-
-def room_volume(floor_area, height):
-    return round(floor_area * height, 1)
-
-
-def calculate_minimum_airflow(room_volume, air_change_rate, num_persons, airflow_per_person, floor_area,
-                              airflow_per_area):
-    v_ach = room_volume * air_change_rate
-    v_pers = num_persons * airflow_per_person * 3.6  # Convert l/s to m³/h
-    v_area = floor_area * airflow_per_area * 3.6  # Convert l/s/m² to m³/h
-    return max(v_ach, v_pers, v_area)
 
 
 @app.route('/room/<int:room_id>/delete', methods=['POST'])
 def delete_room(room_id):
     session_db = create_session()
     room = session_db.query(Room).filter_by(RoomID=room_id).first()
-    session_db.delete(room)
-    session_db.commit()
-    flash('Room deleted successfully!')
-    return redirect(url_for('dashboard'))
+    if room:
+        try:
+            session_db.delete(room)
+            session_db.commit()
+            return jsonify({"status": "success", "message": "Room deleted successfully!"})
+        except Exception as e:
+            session_db.rollback()
+            return jsonify({"status": "error", "message": f"An error occurred: {str(e)}"}), 400
+        finally:
+            session_db.close()
+    return jsonify({"status": "error", "message": "Room not found!"}), 404
+
 
 
 @app.route('/room/<int:room_id>/report')
@@ -462,7 +398,7 @@ def heat_gain(room_id):
                                heat_capacity=project.HeatCapacity,
                                required_airflow=required_airflow,
                                supply_systems_data=supply_systems_data,
-                               airflow=airflow,
+                                airflow=airflow,
                                csrf_token=generate_csrf())
     except Exception as e:
         flash('An error occurred: {}'.format(e), 'danger')
@@ -524,7 +460,6 @@ def delete_system(system_id):
     return redirect(url_for('supply_systems'))
 
 if __name__ == '__main__':
-    import os
     from models import Base
     from sqlalchemy import create_engine
     from config import DATABASE_PATH
@@ -533,4 +468,4 @@ if __name__ == '__main__':
     Base.metadata.create_all(engine)
 
 
-    app.run(host='0.0.0.0', port=os.environ.get('PORT', 5000))
+    app.run(debug=True)

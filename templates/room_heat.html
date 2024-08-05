@@ -3,20 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Heat Gain Calculation - RoomCalc</title>
+    <title>Room Form and Heat Gain Calculation</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        .table-bordered td, .table-bordered th {
-            border: 1px solid #dee2e6;
-        }
-        .bg-lightgray {
-            background-color: #f8f9fa;
-        }
-        .bg-lightred {
-            background-color: #ffcccb;
-        }
+        .error { color: red; }
+        .table-editable { position: relative; }
+        .table-remove { color: #700; cursor: pointer; }
+        .table-remove:hover { color: #f00; }
+        .table-add { color: #070; cursor: pointer; }
+        .table-add:hover { color: #0b0; }
+        #room-canvas { border: 1px solid #ddd; cursor: grab; }
+        #room-canvas:active { cursor: grabbing; }
+        .bg-lightgray { background-color: #f8f9fa; }
+        .bg-lightred { background-color: #ffcccb; }
     </style>
 </head>
+
+<div class="container mt-5">
+    <h1 class="mb-4">{% if room %}Edit Room{% else %}Create Room{% endif %}</h1>
+    <form method="POST" id="roomForm" action="{% if room %}{{ url_for('edit_room', room_id=room.RoomID) }}{% else %}{{ url_for('new_room', project_id=project_id) }}{% endif %}">
+        {{ form.hidden_tag() }}
+
+        <div class="form-row">
+            <div class="form-group col-md-6">
+                {{ form.LocationNo.label }}
+                {{ form.LocationNo(class="form-control") }}
+            </div>
+
+            <div class="form-group col-md-6">
+                {{ form.RoomName.label }}
+                {{ form.RoomName(class="form-control") }}
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group col-md-6">
+                {{ form.Elevation.label }}
+                {{ form.Elevation(class="form-control") }}
+            </div>
+
+            <div class="form-group col-md-6">
+                {{ form.Height.label }}
+                {{ form.Height(class="form-control", id="Height") }}
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group col-md-6">
+                {{ form.MinVentilationPerPerson.label }}
+                {{ form.MinVentilationPerPerson(class="form-control") }}
+            </div>
+
+            <div class="form-group col-md-6">
+                {{ form.MinVentilationPerArea.label }}
+                {{ form.MinVentilationPerArea(class="form-control") }}
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group col-md-6">
+                {{ form.MinAirChangeRate.label }}
+                {{ form.MinAirChangeRate(class="form-control") }}
+            </div>
+
+            <div class="form-group col-md-6">
+                {{ form.Occupancy.label }}
+                {{ form.Occupancy(class="form-control") }}
+            </div>
+        </div>
+
+        <h3>Walls</h3>
+        <div class="table-editable mb-4">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Length (m)</th>
+                    <th>Angle (°)</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for wall_form in form.walls %}
+                    <tr class="wall-entry">
+                        <td>{{ wall_form.Length(class="form-control wall-length") }}</td>
+                        <td>{{ wall_form.Angle(class="form-control wall-angle") }}</td>
+                        <td>{% if loop.index > 1 %}<span class="table-remove btn btn-danger">Remove</span>{% endif %}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <span class="table-add btn btn-secondary mb-3">Add Wall</span>
+        </div>
+
+        <button type="button" id="drawButton" class="btn btn-primary mb-3">Draw Room</button>
+
+        <div class="form-group">
+            <canvas id="room-canvas" width="600" height="400"></canvas>
+        </div>
+
+        <div id="error-message" class="error"></div>
+
+        <div class="form-row">
+            <div class="form-group col-md-4">
+                {{ form.Area.label }}
+                {{ form.Area(class="form-control", readonly=True, id="Area") }}
+            </div>
+
+            <div class="form-group col-md-4">
+                {{ form.Volume.label }}
+                {{ form.Volume(class="form-control", readonly=True, id="Volume") }}
+            </div>
+
+            <div class="form-group col-md-4">
+                {{ form.MinimumAirFlow.label }}
+                {{ form.MinimumAirFlow(class="form-control", readonly=True, id="MinimumAirFlow") }}
+            </div>
+        </div>
+
+        <button type="button" id="calculateButton" class="btn btn-secondary mt-3">Calculate</button>
+        <button type="submit" class="btn btn-primary btn-block">{{ 'Update Room' if room else 'Create Room' }}</button>
+    </form>
+</div>
+
 <body>
 <div class="container mt-5">
     <h1 class="text-center">Heat Gain</h1>
@@ -393,11 +501,8 @@
         let totalHeatGainWinter = 0;
 
         surfaces.forEach((surface, index) => {
-            surface.deltaTSummer = ambientTempSummer - actualRoomTempSummer;
-            surface.deltaTWinter = ambientTempWinter - actualRoomTempWinter;
-
-            console.log('acutalRoomTempSummer', actualRoomTempSummer);
-            console.log('acutalRoomTempWinter', actualRoomTempWinter);
+            surface.deltaTSummer = surface.internalTempSummer - actualRoomTempSummer;
+            surface.deltaTWinter = surface.internalTempWinter - actualRoomTempWinter;
             let heatGainSummer = surface.area * surface.uValue * surface.deltaTSummer / 1000;
             let heatGainWinter = surface.area * surface.uValue * surface.deltaTWinter / 1000;
 
@@ -430,7 +535,6 @@
 
         let actualRoomTempSummer = calculateRoomTemp(U_values, areas, summerTemps, AF, rho, Cp, IHGsSummer * 1000, supplyBeforeReheatSummer);
         let actualRoomTempWinter = calculateRoomTemp(U_values, areas, winterTemps, AF, rho, Cp, IHGsWinter * 1000, supplyBeforeReheatWinter);
-        console.log('actualroomtempwinter_2', actualRoomTempWinter);
 
         updateRoomTemperatures(actualRoomTempSummer, actualRoomTempWinter);
 
